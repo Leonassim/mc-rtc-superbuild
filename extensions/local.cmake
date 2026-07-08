@@ -1,0 +1,5 @@
+set(EXTENSIONS_DIR ${CMAKE_CURRENT_LIST_DIR}/superbuild-extensions)
+include(${CMAKE_CURRENT_LIST_DIR}/plugins/mc_joystick_plugin.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/plugins/mc_residual_estimation.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/plugins/mc_mujoco.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/controllers/rl_controller.cmake)
