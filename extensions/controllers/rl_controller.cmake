@@ -1,5 +1,5 @@
 AddProject(rl_controller
   GITHUB leonassim/new-rl-qp-controller
-  GIT_TAG origin/rhps1
+  GIT_TAG origin/main
   DEPENDS mc_rtc
 )
