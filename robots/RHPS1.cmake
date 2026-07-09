@@ -1,4 +1,4 @@
-option(WITH_RHPS1 "Build RHPS1 support" OFF)
+option(WITH_RHPS1 "Build RHPS1 support" ON)
 
 if(NOT WITH_RHPS1)
   return()
