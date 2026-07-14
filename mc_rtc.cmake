@@ -29,10 +29,12 @@ AddProject(
   APT_PACKAGES libndcurves-dev
 )
 
+# ArnaudDmt addWaiko branch: provides the WAIKO observer stack (leg odometry
+# without contact sensors) used by the MCWaiko observer in mc_state_observation.
 AddProject(
   state-observation
-  GITHUB jrl-umi3218/state-observation
-  GIT_TAG origin/master
+  GITHUB ArnaudDmt/state-observation
+  GIT_TAG origin/addWaiko
   CMAKE_ARGS -DBUILD_STATE_OBSERVATION_TOOLS:BOOL=OFF
   APT_PACKAGES libstate-observation-dev
 )
@@ -266,8 +268,10 @@ AddProject(
   mc_state_observation
   # GITHUB jrl-umi3218/mc_state_observation
   # GIT_TAG origin/main
-  GITHUB_PRIVATE bastien-muraccioli/mc_state_observation
-  GIT_TAG origin/main
+  # GITHUB_PRIVATE bastien-muraccioli/mc_state_observation
+  # GIT_TAG origin/main
+  GITHUB ArnaudDmt/mc_state_observation
+  GIT_TAG origin/addWaiko
   CMAKE_ARGS ${MC_STATE_OBSERVATION_OPTIONS}
   DEPENDS ${MC_STATE_OBSERVATION_DEPENDS}
   APT_PACKAGES mc-state-observation ros-${ROS_DISTRO}-mc-state-observation
