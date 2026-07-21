@@ -8,7 +8,7 @@
 # patching RBDyn upstream.
 AddProject(mc_mujoco
   GITHUB mathieu-celerier/mc_mujoco
-  GIT_TAG origin/main
+  GIT_TAG 8934988254b8a297f6eaadb02a94be63671b4d11 # pinned 2026-07-22, was origin/main
   DEPENDS mc_rtc
   CMAKE_ARGS -DCMAKE_EXE_LINKER_FLAGS=-lboost_filesystem
              -DCMAKE_SHARED_LINKER_FLAGS=-lboost_filesystem

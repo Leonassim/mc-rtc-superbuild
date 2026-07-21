@@ -46,7 +46,7 @@ endfunction()
 AddProject(
   geos-cpp-inline
   GITHUB isri-aist/geos-cpp-inline-deb
-  GIT_TAG origin/main
+  GIT_TAG aeed4e041b1d5259f260f80c7f3610e631a1dfa8 # pinned 2026-07-22, was origin/main
   INSTALL_PREFIX /usr
   SKIP_TEST NO_SOURCE_MONITOR
   APT_PACKAGES libgeos++-inline-dev

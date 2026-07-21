@@ -34,7 +34,7 @@ AddProject(
 AddProject(
   state-observation
   GITHUB ArnaudDmt/state-observation
-  GIT_TAG origin/addWaiko
+  GIT_TAG 693d53d76994e44ae6b2b69af7fa33ff726cc4d5 # pinned 2026-07-22, was origin/addWaiko
   CMAKE_ARGS -DBUILD_STATE_OBSERVATION_TOOLS:BOOL=OFF
   APT_PACKAGES libstate-observation-dev
 )
@@ -53,7 +53,7 @@ endif()
 AddProject(
   SpaceVecAlg
   GITHUB jrl-umi3218/SpaceVecAlg
-  GIT_TAG origin/master
+  GIT_TAG bbe75c7fd4912834b311dfabe022d95f17eb409c # pinned 2026-07-22, was origin/master
   DEPENDS ${SpaceVecAlg_DEPENDS}
   APT_PACKAGES libspacevecalg-dev python-spacevecalg python3-spacevecalg
 )
@@ -61,7 +61,7 @@ AddProject(
 AddProject(
   sch-core
   GITHUB jrl-umi3218/sch-core
-  GIT_TAG origin/master
+  GIT_TAG a04cd4ee0fbc3a799ad3c0e9a8cf8629b3eb9d62 # pinned 2026-07-22, was origin/master
   CMAKE_ARGS -DCMAKE_CXX_STANDARD=11
   APT_PACKAGES libsch-core-dev
 )
@@ -74,7 +74,7 @@ endif()
 AddProject(
   mesh-sampling
   GITHUB jrl-umi3218/mesh_sampling
-  GIT_TAG origin/master
+  GIT_TAG 554bbc283d23c81854937955655674ebd3b7f225 # pinned 2026-07-22, was origin/master
   APT_PACKAGES libmesh-sampling-dev
   APT_DEPENDENCIES libgtest-dev libqhull-dev libassimp-dev
   CMAKE_ARGS ${MESH_SAMPLING_ARGS}
@@ -94,7 +94,7 @@ endif()
 AddProject(
   RBDyn
   GITHUB jrl-umi3218/RBDyn
-  GIT_TAG origin/master
+  GIT_TAG a49b383e3fbc57168c7238fd93155c409b6046f5 # pinned 2026-07-22, was origin/master
   DEPENDS SpaceVecAlg
   APT_PACKAGES librbdyn-dev python-rbdyn python3-rbdyn
 )
@@ -111,7 +111,7 @@ endif()
 AddProject(
   eigen-qld
   GITHUB jrl-umi3218/eigen-qld
-  GIT_TAG origin/master
+  GIT_TAG ebdf5d6246c671b7a55fb4b678551c495164e694 # pinned 2026-07-22, was origin/master
   NO_NINJA NO_COLOR
   CMAKE_ARGS ${USE_F2C_ARGS}
   APT_PACKAGES libeigen-qld-dev python-eigen-qld python3-eigen-qld
@@ -120,7 +120,7 @@ AddProject(
 AddProject(
   eigen-quadprog
   GITHUB jrl-umi3218/eigen-quadprog
-  GIT_TAG origin/master
+  GIT_TAG 2da94c5d2a44d0db75b7a2eddd4bc547939d229f # pinned 2026-07-22, was origin/master
   NO_NINJA
   CMAKE_ARGS ${USE_F2C_ARGS}
   APT_PACKAGES libeigen-quadprog-dev
@@ -149,7 +149,7 @@ endif()
 AddProject(
   Tasks
   GITHUB_PRIVATE bastien-muraccioli/Tasks
-  GIT_TAG origin/master
+  GIT_TAG 827e136322da3e2f1d9c28141b00fe43a9f35a4a # pinned 2026-07-22, was origin/master
   DEPENDS ${Tasks_DEPENDS}
   APT_PACKAGES libtasks-qld-dev python-tasks python3-tasks
 )
@@ -157,7 +157,7 @@ AddProject(
 AddProject(
   lexls
   GITHUB jrl-umi3218/lexls
-  GIT_TAG origin/master
+  GIT_TAG f13b6b668146aabbf838b1e2fc3fe9b65d752db5 # pinned 2026-07-22, was origin/master
   CMAKE_ARGS -DINSTALL_PDF_DOCUMENTATION:BOOL=OFF -DINSTALL_HTML_DOCUMENTATION:BOOL=OFF
   APT_PACKAGES liblexls-dev
 )
@@ -170,7 +170,7 @@ endif()
 
 AddProject(tvm
   GITHUB_PRIVATE bastien-muraccioli/tvm
-  GIT_TAG origin/master
+  GIT_TAG 62aacd80d49a11e2d56dd3a7dcf712340f7f6b68 # pinned 2026-07-22, was origin/master
   DEPENDS eigen-qld eigen-quadprog lexls ${tvm_EXTRA_DEPENDS}
   CMAKE_ARGS -DTVM_WITH_QLD:BOOL=ON
              -DTVM_WITH_QUADPROG:BOOL=ON -DTVM_WITH_LEXLS:BOOL=ON
@@ -187,7 +187,7 @@ endif()
 AddCatkinProject(
   mc_rtc_data
   GITHUB jrl-umi3218/mc_rtc_data
-  GIT_TAG ${MC_RTC_ROS_BRANCH}
+  GIT_TAG 3f13055e7abfdd97e5ec597057b3c681a18d429e # pinned 2026-07-22, was ${MC_RTC_ROS_BRANCH} (origin/master, WITH_ROS_SUPPORT=ON)
   WORKSPACE data_ws
   APT_PACKAGES mc-rtc-data ros-${ROS_DISTRO}-mc-rtc-data
   CMAKE_ARGS ${MC_RTC_ROS_OPTION}
@@ -198,7 +198,7 @@ AddCatkinProject(
 # devel branch we depended on before -- not previously declared here.
 AddProject(mc_rtc_ros_compat
   GITHUB jrl-umi3218/mc_rtc_ros_compat
-  GIT_TAG origin/main
+  GIT_TAG d294d5d7a7526db1c2d5ab4605569255dc3a459e # pinned 2026-07-22, was origin/main
 )
 
 set(mc_rtc_DEPENDS tvm Tasks mc_rtc_data ndcurves state-observation mesh-sampling mc_rtc_ros_compat)
@@ -206,7 +206,7 @@ if(WITH_ROS_SUPPORT)
   AddCatkinProject(
     mc_rtc_msgs
     GITHUB jrl-umi3218/mc_rtc_msgs
-    GIT_TAG origin/master
+    GIT_TAG 93ae1865ccef05caeed61039a90492664ccb7cfe # pinned 2026-07-22, was origin/master
     WORKSPACE data_ws
     APT_PACKAGES ros-${ROS_DISTRO}-mc-rtc-msgs
   )
@@ -238,7 +238,7 @@ else()
 endif()
 AddProject(mc_rtc
   GITHUB_PRIVATE bastien-muraccioli/mc_rtc
-  GIT_TAG origin/master
+  GIT_TAG 542a88432d30d04dfd33cd6f0e0ab1c7be7f598b # pinned 2026-07-22, was origin/master
   CMAKE_ARGS -DMC_LOG_UI_PYTHON_EXECUTABLE=${MC_LOG_UI_PYTHON_EXECUTABLE}
              ${MC_RTC_ROS_OPTION} ${MC_RTC_EXTRA_OPTIONS}
   DEPENDS ${mc_rtc_DEPENDS}
@@ -250,7 +250,7 @@ if(WITH_ROS_SUPPORT)
   AddCatkinProject(
     mc_rtc_ros
     GITHUB jrl-umi3218/mc_rtc_ros
-    GIT_TAG origin/master
+    GIT_TAG 7e130cb94721738520a29c0d96140fc4d2324fec # pinned 2026-07-22, was origin/master
     WORKSPACE mc_rtc_ws
     DEPENDS mc_rtc
     APT_PACKAGES ros-${ROS_DISTRO}-mc-rtc-plugin ros-${ROS_DISTRO}-mc-rtc-tools
@@ -264,7 +264,7 @@ if(WITH_ROS_SUPPORT)
   AddProject(
     gram_savitzky_golay
     GITHUB jrl-umi3218/gram_savitzky_golay
-    GIT_TAG origin/master
+    GIT_TAG 3f767e3ca366677ed189c33ee14a86cc6e9b34a6 # pinned 2026-07-22, was origin/master
     APT_PACKAGES libgram-savitzky-golay-dev
   )
   list(APPEND MC_STATE_OBSERVATION_DEPENDS gram_savitzky_golay)
@@ -279,7 +279,7 @@ AddProject(
   # GITHUB_PRIVATE bastien-muraccioli/mc_state_observation
   # GIT_TAG origin/main
   GITHUB ArnaudDmt/mc_state_observation
-  GIT_TAG origin/addWaiko
+  GIT_TAG 309a692d816ba2cec4de9df97b4b0c85331929a8 # pinned 2026-07-22, was origin/addWaiko
   CMAKE_ARGS ${MC_STATE_OBSERVATION_OPTIONS}
   DEPENDS ${MC_STATE_OBSERVATION_DEPENDS}
   APT_PACKAGES mc-state-observation ros-${ROS_DISTRO}-mc-state-observation
