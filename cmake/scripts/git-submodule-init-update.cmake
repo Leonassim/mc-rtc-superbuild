@@ -36,6 +36,23 @@ if("${OPERATION}" STREQUAL "init")
       FATAL_ERROR "Failed to add submodule '${TARGET_FOLDER}' from '${GIT_REPOSITORY}'."
     )
   endif()
+  # `git submodule add` has no way to clone at an arbitrary commit (only
+  # `-b <branch>`), so a pinned SHA was silently ignored above and the
+  # submodule ends up on the repository's default branch instead. Fix it up
+  # explicitly rather than relying on a later "update" pass to catch it.
+  if(GIT_TAG_IS_TAG)
+    execute_process(
+      COMMAND git checkout "${GIT_TAG}"
+      WORKING_DIRECTORY "${SOURCE_DESTINATION}/${TARGET_FOLDER}"
+      RESULT_VARIABLE GIT_CHECKOUT_FAILED
+    )
+    if(NOT GIT_CHECKOUT_FAILED EQUAL 0)
+      message(
+        FATAL_ERROR
+          "Failed to checkout pinned commit '${GIT_TAG}' for '${TARGET_FOLDER}'."
+      )
+    endif()
+  endif()
 elseif("${OPERATION}" STREQUAL "update")
   # The "update" operation attemps to change to the new branch/tag specified for this project. It does its best to ensure that the local branch is in a clean state before switching to the new branch/tag and that no data is lost in the process.
 
