@@ -13,4 +13,8 @@ AddProject(mc_mujoco
   CMAKE_ARGS -DCMAKE_EXE_LINKER_FLAGS=-lboost_filesystem
              -DCMAKE_SHARED_LINKER_FLAGS=-lboost_filesystem
              -DCMAKE_MODULE_LINKER_FLAGS=-lboost_filesystem
+  # Vendored glfw (USE_GL=ON) needs the X11 dev headers below to configure;
+  # present on Léo's host from an unrelated install, missing on a clean
+  # machine (found via the 2026-07-22 fresh-container reproducibility test).
+  APT_DEPENDENCIES libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev
 )
