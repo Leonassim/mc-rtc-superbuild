@@ -10,6 +10,13 @@ There are two ways to use the superbuild:
 - Or locally on your host machine. Note that system dependencies (apt, pip, ROS, etc.) will be installed globally on your machine. For building with this method, keep reading this page.
 
 
+Fork-specific notes
+--
+
+Dependencies on third-party forks are pinned to a fixed commit (`GIT_TAG <sha> # pinned <date>, was origin/...`), so a fresh clone doesn't break when someone else's branch moves or disappears. Repos we own outright (e.g. `rl_controller`) stay on `origin/main`.
+
+Tags named `working-<context>-<date>` mark a snapshot that was fully built and tested end to end. `git checkout <tag>` reproduces that state regardless of upstream changes since. When bumping a pin, rebuild fully before updating the tag or cutting a new one.
+
 Requirements
 --
 
