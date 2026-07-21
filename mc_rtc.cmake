@@ -193,7 +193,15 @@ AddCatkinProject(
   CMAKE_ARGS ${MC_RTC_ROS_OPTION}
 )
 
-set(mc_rtc_DEPENDS tvm Tasks mc_rtc_data ndcurves state-observation mesh-sampling)
+# bastien-muraccioli/mc_rtc's master branch (used since we moved off the
+# nonexistent 'devel' branch) hard-requires mc_rtc_ros_compat, unlike the old
+# devel branch we depended on before -- not previously declared here.
+AddProject(mc_rtc_ros_compat
+  GITHUB jrl-umi3218/mc_rtc_ros_compat
+  GIT_TAG origin/main
+)
+
+set(mc_rtc_DEPENDS tvm Tasks mc_rtc_data ndcurves state-observation mesh-sampling mc_rtc_ros_compat)
 if(WITH_ROS_SUPPORT)
   AddCatkinProject(
     mc_rtc_msgs
