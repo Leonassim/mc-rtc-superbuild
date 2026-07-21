@@ -20,7 +20,7 @@ Tags named `working-<context>-<date>` mark a snapshot that was fully built and t
 Requirements
 --
 
-- [CMake >= 3.20](https://cmake.org/download/)
+- [CMake >= 3.31](https://cmake.org/download/) (required by the `CMakePresets.json` schema version used here; distro-provided packages are often older, use the bootstrap script below or [Kitware's apt repository](https://apt.kitware.com/))
 - [Git](https://git-scm.com/)
 - [Visual Studio 2019 and later](https://visualstudio.microsoft.com/) (Windows)
 
@@ -62,6 +62,10 @@ Then configure and run the superbuild from the terminal, or use VSCode's "CMake 
   # Build all projects
   cmake --build --preset relwithdebinfo
   ```
+
+  The `relwithdebinfo-noble` preset (Ubuntu 24.04, ROS, no Python bindings) is gated behind
+  the `UBUNTU_VERSION` environment variable, since CMake presets can't detect the OS
+  themselves: `UBUNTU_VERSION=noble cmake --preset relwithdebinfo-noble`.
 > <details>
 >  <summary>ℹ️ Create custom presets</summary>
 >   If you need to customize the build process, you can create your own presets. Here is an example of how to define custom CMake presets:
