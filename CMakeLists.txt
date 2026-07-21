@@ -135,11 +135,11 @@ endif()
 
 include(mc_rtc.cmake)
 
-add_subdirectory(robots)
-
 set_property(GLOBAL PROPERTY ADDED_EXTENSIONS)
 
 add_subdirectory(extensions)
+
+add_subdirectory(robots)
 
 # Personal projects can go here although that is not recommended PERSONAL_PROJECTS
 
