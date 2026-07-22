@@ -65,7 +65,6 @@ Then configure and run the superbuild from the terminal, or use VSCode's "CMake 
 
   On Ubuntu 24.04 (noble), use the `relwithdebinfo-noble` preset instead:
   ```bash
-  rm -rf build/superbuild  # switching presets requires a clean build dir
   UBUNTU_VERSION=noble cmake --preset relwithdebinfo-noble
   cmake --build --preset relwithdebinfo-noble
   ```
