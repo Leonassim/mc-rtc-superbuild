@@ -63,15 +63,12 @@ Then configure and run the superbuild from the terminal, or use VSCode's "CMake 
   cmake --build --preset relwithdebinfo
   ```
 
-  The `relwithdebinfo-noble` preset (Ubuntu 24.04, ROS, no Python bindings) is gated behind
-  the `UBUNTU_VERSION` environment variable, since CMake presets can't detect the OS
-  themselves: `UBUNTU_VERSION=noble cmake --preset relwithdebinfo-noble`.
-
-All presets share the same build directory (`./build/superbuild`). Switching to a preset with different structural options (`WITH_ROS_SUPPORT`, `PYTHON_BINDING`, etc.) on top of an existing configure won't work — wipe that directory first:
-```bash
-rm -rf build/superbuild
-UBUNTU_VERSION=noble cmake --preset relwithdebinfo-noble
-```
+  On Ubuntu 24.04 (noble), use the `relwithdebinfo-noble` preset instead:
+  ```bash
+  rm -rf build/superbuild  # switching presets requires a clean build dir
+  UBUNTU_VERSION=noble cmake --preset relwithdebinfo-noble
+  cmake --build --preset relwithdebinfo-noble
+  ```
 
 > <details>
 >  <summary>ℹ️ Create custom presets</summary>
