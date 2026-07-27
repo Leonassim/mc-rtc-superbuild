@@ -1,0 +1,97 @@
+name: CI Ubuntu Noble (RHPS1 + NewRLQPController smoke test)
+
+on:
+  repository_dispatch:
+    types:
+    - build-noble
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - '**'
+  schedule:
+    # Run on Sunday, Tuesday and Thursday nights
+    - cron: '0 22 * * 0,1,4'
+
+# cancel running workflows when pushing to the same branch/pr
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-launch:
+    runs-on: ubuntu-24.04
+    env:
+      UBUNTU_VERSION: noble
+    steps:
+    - name: Maximize build space
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo docker image prune --all --force
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Setup latest CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: 'latest'
+    - name: Bootstrap
+      shell: bash
+      run: |
+        ./utils/bootstrap-linux.sh
+    - name: Configure (relwithdebinfo-noble preset)
+      shell: bash
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@example.com"
+        cmake --preset relwithdebinfo-noble -DVERBOSE_TEST_OUTPUT=ON
+    - name: Build and install everything
+      shell: bash
+      run: |
+        cmake --build --preset relwithdebinfo-noble --target install
+    - name: Configure mc_rtc for RHPS1 + NewRLQPController
+      shell: bash
+      run: |
+        INSTALL_PREFIX="$(realpath ${GITHUB_WORKSPACE}/../install)"
+        mkdir -p ~/.config/mc_rtc
+        cat > ~/.config/mc_rtc/mc_rtc.yaml <<EOF
+        ---
+        MainRobot: RHPS1_MuJoCo
+        Enabled: NewRLQPController
+
+        Plugins:
+          - mc_joystick_plugin
+
+        ObserverModulePaths:
+          - "${INSTALL_PREFIX}/lib/mc_observers"
+        RobotModulePaths:
+          - "${INSTALL_PREFIX}/lib/mc_robots"
+        ControllerModulePaths:
+          - "${INSTALL_PREFIX}/lib/mc_controller"
+        EOF
+        cat ~/.config/mc_rtc/mc_rtc.yaml
+    - name: Launch mc_mujoco with NewRLQPController on RHPS1 (headless smoke test)
+      shell: bash
+      run: |
+        source ${GITHUB_WORKSPACE}/../install/setup_mc_rtc.sh
+        LOG=$(mktemp)
+        set +e
+        timeout 20s mc_mujoco --without-visualization --without-mc-rtc-gui 2>&1 | tee "$LOG"
+        STATUS=${PIPESTATUS[0]}
+        set -e
+        echo "mc_mujoco exit status: $STATUS"
+        # 124 = timeout fired while mc_mujoco was still running cleanly -- the pass
+        # condition for a smoke test that has no natural end (it's a sim loop).
+        # 0 (exited on its own) also passes. Anything else, or a crash signature
+        # in the log even under a "clean" exit, is a failure.
+        if grep -qiE "segmentation fault|core dumped|Aborted|terminate called|std::exception|FATAL" "$LOG"; then
+          echo "Crash signature found in mc_mujoco output"
+          exit 1
+        fi
+        if [ "$STATUS" -ne 124 ] && [ "$STATUS" -ne 0 ]; then
+          echo "mc_mujoco exited unexpectedly with status $STATUS"
+          exit 1
+        fi
