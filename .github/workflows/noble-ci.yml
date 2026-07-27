@@ -51,6 +51,13 @@ jobs:
       shell: bash
       run: |
         ./utils/bootstrap-linux.sh
+    - name: Install headless GL stack for mc_mujoco (GLFW/GL init runs even with --without-visualization)
+      shell: bash
+      run: |
+        sudo apt-get update
+        # libgl1-mesa-glx is gone on noble (replaced by libgl1); libgl1-mesa-dri
+        # provides the llvmpipe software rasterizer, libglx-mesa0 the GLX driver.
+        sudo apt-get install -y xvfb libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils
     - name: Configure (relwithdebinfo-noble preset)
       shell: bash
       run: |
@@ -88,7 +95,7 @@ jobs:
         source ${GITHUB_WORKSPACE}/../install/setup_mc_rtc.sh
         LOG=$(mktemp)
         set +e
-        timeout 20s mc_mujoco --without-visualization --without-mc-rtc-gui 2>&1 | tee "$LOG"
+        timeout 20s xvfb-run -a mc_mujoco --without-visualization --without-mc-rtc-gui 2>&1 | tee "$LOG"
         STATUS=${PIPESTATUS[0]}
         set -e
         echo "mc_mujoco exit status: $STATUS"
