@@ -11,7 +11,7 @@ endif()
 if(ROS_IS_ROS2)
   AddCatkinProject(
     miroki_description
-    GITHUB isri-aist/miroki_description
+    GITHUB_PRIVATE isri-aist/miroki_description
     GIT_TAG origin/main
     WORKSPACE data_ws
   )
@@ -21,7 +21,7 @@ endif()
 
 AddProject(
   mc_miroki
-  GITHUB isri-aist/mc_miroki
+  GITHUB_PRIVATE isri-aist/mc_miroki
   GIT_TAG origin/main
   DEPENDS miroki_description mc_rtc
 )

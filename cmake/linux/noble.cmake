@@ -4,7 +4,7 @@ set(ROS_IS_ROS2 ON)
 set(ROS_DISTRO jazzy)
 set(ROS_WORKSPACE_INSTALL_PYTHON_DESTINATION "lib/python3.12/site-packages")
 set(APT_DEPENDENCIES
-    curl
+  curl
     wget
     cmake
     build-essential

@@ -16,6 +16,9 @@ AddProject(
   mc_rhps1
   GITHUB_PRIVATE isri-aist/mc_rhps1
   GIT_TAG e4778dc176a49e7c1cc9a440f48643342456de22 # pinned 2026-07-22, was origin/master
+  # bastien/main drops rhps1_description from DEPENDS -- mc_rhps1's
+  # CMakeLists does find_package(rhps1_description REQUIRED) (verified
+  # 2026-07-27), so that's a build-order bug, not a cleanup. Kept.
   DEPENDS rhps1_description mc_rtc
 )
 

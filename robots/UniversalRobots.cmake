@@ -72,7 +72,7 @@ if(WITH_UR10)
   )
   AddProject(
     mc_ur10
-    GITHUB isri-aist/mc_ur10
+    GITHUB_PRIVATE bastien-muraccioli/mc_ur10
     GIT_TAG origin/main
     DEPENDS mc_ur10_description mc_rtc
   )

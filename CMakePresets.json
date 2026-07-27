@@ -6,12 +6,12 @@
             "name": "relwithdebinfo",
             "displayName": "RelWithDebInfo",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/../workspace/build/superbuild",
+            "binaryDir": "${sourceDir}/../build/superbuild",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "SOURCE_DESTINATION": "${sourceDir}/../workspace/devel",
-                "BUILD_DESTINATION": "${sourceDir}/../workspace/build/projects",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../workspace/install"
+                "SOURCE_DESTINATION": "${sourceDir}/../src",
+                "BUILD_DESTINATION": "${sourceDir}/../build",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../install"
             }
         },
         {
