@@ -9,6 +9,10 @@ AddProject(mc_mujoco
   GITHUB mathieu-celerier/mc_mujoco
   GIT_TAG 8934988254b8a297f6eaadb02a94be63671b4d11 # pinned 2026-07-22, was origin/main
   DEPENDS mc_rtc
+  # BUILD_EXAMPLES=OFF (2026-07-27): mc_mujoco's bundled SampleNeckPolicy
+  # example fails to compile on a fresh noble build; unrelated to RHPS1 /
+  # rl_controller, which don't depend on it.
+  CMAKE_ARGS -DBUILD_EXAMPLES=OFF
   # X11 headers required by vendored glfw
   APT_DEPENDENCIES libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev
 )
