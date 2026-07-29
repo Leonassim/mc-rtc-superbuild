@@ -5,6 +5,13 @@ AddProject(rl_controller
   # not what it was at tag time, which defeats the point of tagging even for
   # a fully-controlled repo. Fine to float back to origin/main on main
   # afterward; day-to-day dev doesn't need this pin, a release snapshot does.
-  GIT_TAG 764f84533222290ed73a90bcbb94b01d3828db90 # pinned 2026-07-28, was origin/main
+  #
+  # WARNING: this pin makes any superbuild rebuild hard-checkout the SHA in
+  # ~/src/rl_controller, silently discarding uncommitted/unpushed work there
+  # and reinstalling binaries built from the pinned code. That bit us on
+  # 2026-07-29: a routine superbuild rebuild reverted a day of controller
+  # fixes and the resulting binary/config mismatch looked like a policy
+  # failure in mc_mujoco. Bump this SHA whenever rl_controller moves.
+  GIT_TAG 3de0c565cad39b4006f3b41aa008338549167ab0 # pinned 2026-07-29, was origin/main
   DEPENDS mc_rtc mc_joystick_plugin
 )
