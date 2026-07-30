@@ -365,6 +365,26 @@ RequireExtension
 
 **`RequireExtension(FOLDER ...)`**
 
+
+
+  jointNames.erase(std::remove_if(jointNames.begin(), jointNames.end(),
+                                  [this](const std::string & j) {
+                                    return !robot().hasJoint(j)
+                                           || robot().mb().joint(robot().jointIndexByName(j)).dof() != 1;
+                                  }),
+                   jointNames.end());
+
+  for(const auto & joint : jointNames)
+  {
+    int i = robot().jointIndexByName(joint);
+    // Some DOFs (e.g. connector joints whose child link is in the robot
+    // module's filtered_links) keep a real index in the model but carry no
+    // parsed position/velocity/torque bounds -- skip rather than dereference
+    // an empty bound vector.
+    if(rr.ql()[i].empty() || rr.qu()[i].empty() || rr.vl()[i].empty() || rr.vu()[i].empty()
+       || rr.tl()[i].empty() || rr.tu()[i].empty())
+      continue;
+    const double ds = dsPercent_ * (rr.qu()[i][0] - rr.ql()[i][0]);
 This allows an extension to require another extension and make sure this extension is included before the one being processed.
 
 Supported arguments are the one of [`FetchContent_Declare`](https://cmake.org/cmake/help/latest/module/FetchContent.html)
