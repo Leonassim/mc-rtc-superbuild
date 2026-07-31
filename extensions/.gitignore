@@ -1,2 +1,8 @@
 #*
 !.gitignore
+
+# Extensions cloned in place by RequireExtension (hardware/rhps1_lowlevel.cmake).
+# Full git checkouts pinned from CMake, not content of this repo -- without
+# this they show up as untracked noise in every `git status` and can be
+# committed by accident.
+/drcutil-superbuild/
