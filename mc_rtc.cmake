@@ -35,6 +35,11 @@ AddProject(
   state-observation
   GITHUB ArnaudDmt/state-observation
   GIT_TAG 693d53d76994e44ae6b2b69af7fa33ff726cc4d5 # pinned 2026-07-22, was origin/addWaiko
+  # SKIP_TEST, not just the global BUILD_TESTING: this is a deployment branch,
+  # its unit tests are not what we are validating, and a failing test here
+  # stops the whole superbuild before mc_rtc is even built. Forced per project
+  # so it holds whatever the preset or the caller sets globally.
+  SKIP_TEST
   CMAKE_ARGS -DBUILD_STATE_OBSERVATION_TOOLS:BOOL=OFF
   APT_PACKAGES libstate-observation-dev
 )
@@ -280,6 +285,8 @@ AddProject(
   # GIT_TAG origin/main
   GITHUB ArnaudDmt/mc_state_observation
   GIT_TAG 309a692d816ba2cec4de9df97b4b0c85331929a8 # pinned 2026-07-22, was origin/addWaiko
+  # See the SKIP_TEST note on state-observation above.
+  SKIP_TEST
   CMAKE_ARGS ${MC_STATE_OBSERVATION_OPTIONS}
   DEPENDS ${MC_STATE_OBSERVATION_DEPENDS}
   APT_PACKAGES mc-state-observation ros-${ROS_DISTRO}-mc-state-observation
