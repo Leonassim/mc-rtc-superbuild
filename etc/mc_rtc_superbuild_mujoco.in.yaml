@@ -1,0 +1,14 @@
+---
+# mc_mujoco variant of the superbuild mc_rtc configuration.
+#
+# Not loaded by default. Prepend it to MC_RTC_CONTROLLER_CONFIG, which applies
+# its entries last-to-first, so the first entry wins:
+#
+#   MC_RTC_CONTROLLER_CONFIG=@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_mujoco.yaml:$MC_RTC_CONTROLLER_CONFIG mc_mujoco
+#
+# Everything else -- module paths, plugins, Timestep, LoadUserConfiguration --
+# still comes from mc_rtc_superbuild.yaml, so the two cannot drift apart. The
+# only thing that differs is the robot module: mc_mujoco has no model
+# registered for the real RHPS1 module, and the RHPS1_MuJoCo branch of the
+# module lists the 30 driven joints directly.
+MainRobot: RHPS1_MuJoCo

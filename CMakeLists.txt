@@ -272,7 +272,13 @@ install(FILES ${CMAKE_BINARY_DIR}/setup_mc_rtc.sh DESTINATION ${CMAKE_INSTALL_PR
 # setup_mc_rtc.sh exports; see the header of etc/mc_rtc_superbuild.in.yaml for
 # the full merge order and why LoadUserConfiguration is switched off there.
 configure_file(etc/mc_rtc_superbuild.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml @ONLY)
+# mc_mujoco variant, not loaded by default -- prepend it to
+# MC_RTC_CONTROLLER_CONFIG. Shipping it here rather than leaving it as a
+# hand-written file means the simulation and real-robot configurations cannot
+# drift: it overrides MainRobot and nothing else.
+configure_file(etc/mc_rtc_superbuild_mujoco.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_mujoco.yaml @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
+              ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_mujoco.yaml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
 
 # Show message at the end of install target
