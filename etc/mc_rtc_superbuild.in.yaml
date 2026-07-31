@@ -1,0 +1,45 @@
+---
+# Superbuild-owned mc_rtc configuration.
+#
+# Why this file exists, and why it is not etc/mc_rtc.yaml: mc_rtc merges its
+# global configuration in this order, each layer overriding the previous one
+# (mc_global_controller_configuration.cpp):
+#
+#   1. ${CMAKE_INSTALL_PREFIX}/etc/mc_rtc.yaml   -- mc_rtc's own, it installs it
+#   2. every file in $MC_RTC_CONTROLLER_CONFIG   -- this file
+#   3. ~/.config/mc_rtc/mc_rtc.yaml              -- the user's, if LoadUserConfiguration
+#   4. whatever is passed explicitly with -f
+#
+# Layer 1 is out: mc_rtc already installs a file at that exact path, so ours
+# would collide and be clobbered on any mc_rtc rebuild. Layer 2 is ours alone,
+# and setup_mc_rtc.sh points MC_RTC_CONTROLLER_CONFIG at it.
+#
+# LoadUserConfiguration: false is the point of the exercise. A stale
+# ~/.config/mc_rtc/mc_rtc.yaml silently overrides everything the build
+# installed -- which is exactly what happened on the PPC, whose mc_rtc was a
+# different version with a different config than this workstation's. That layer
+# is switched off here, so what you build is what runs, for mc_rtc_ticker and
+# mc_mujoco alike. The flag is read *after* this file is merged, so setting it
+# here works. To get the old behaviour back for a one-off, run with
+# `-f /path/to/other.yaml` (layer 4) rather than editing this.
+LoadUserConfiguration: false
+
+Timestep: 0.001
+
+# RHPS1, not RHPS1_MuJoCo: this is the real-robot entry point. The module's
+# non-mujoco branch lists 32 joints (L_HAND/R_HAND on top of the 30 driven
+# ones); NewRLQPController filters refJointOrder down to the 1-DoF joints the
+# robot actually carries, so the 30-key q0/kp/kd blocks in the controller yaml
+# still match.
+MainRobot: RHPS1
+Enabled: NewRLQPController
+
+Plugins:
+  - mc_joystick_plugin
+
+ObserverModulePaths:
+  - "@CMAKE_INSTALL_PREFIX@/lib/mc_observers"
+RobotModulePaths:
+  - "@CMAKE_INSTALL_PREFIX@/lib/mc_robots"
+ControllerModulePaths:
+  - "@CMAKE_INSTALL_PREFIX@/lib/mc_controller"

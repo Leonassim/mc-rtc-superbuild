@@ -209,7 +209,8 @@ set(FINAL_MESSAGE
 )
 
 set(FINAL_COMMAND "export PATH=${CMAKE_INSTALL_PREFIX}/bin:$PATH
-export PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH
+export MC_RTC_CONTROLLER_CONFIG=${CMAKE_INSTALL_PREFIX}/etc/mc_rtc_superbuild.yaml"
 )
 
 if(APPLE)
@@ -264,6 +265,15 @@ message("${FINAL_MESSAGE}")
 configure_file(cmake/setup_mc_rtc.in.sh ${CMAKE_BINARY_DIR}/setup_mc_rtc.sh @ONLY)
 
 install(FILES ${CMAKE_BINARY_DIR}/setup_mc_rtc.sh DESTINATION ${CMAKE_INSTALL_PREFIX})
+
+# Superbuild-owned mc_rtc configuration. Deliberately NOT etc/mc_rtc.yaml --
+# mc_rtc installs a file at that exact path itself, so ours would be clobbered
+# on any mc_rtc rebuild. It is reached through MC_RTC_CONTROLLER_CONFIG, which
+# setup_mc_rtc.sh exports; see the header of etc/mc_rtc_superbuild.in.yaml for
+# the full merge order and why LoadUserConfiguration is switched off there.
+configure_file(etc/mc_rtc_superbuild.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
 
 # Show message at the end of install target
 install(CODE "message(\"\")")
