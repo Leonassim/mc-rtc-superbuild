@@ -47,6 +47,26 @@ if(WITH_RHPS1_HARDWARE)
     SKIP_TEST
   )
 
+  # The RHPS1 RTC components: AngleToCylinder / CylinderToAngle, the conversion
+  # between joint angles and the crotch/ankle parallel-cylinder mechanism.
+  # Missing from drcutil too, which is why nocnoid.py died on
+  #
+  #   [nocnoid.py] FATAL ERROR: CylinderToAngle cannot be created
+  #
+  # hrpcnoid_rhps1 only *uses* these components (ms.load("CylinderToAngle")) and
+  # ships their calibration tables; nothing in the declared set built them.
+  #
+  # openrtm2, not master: it is the branch that matches the rest of this stack
+  # (hrpsys-base is on ubuntu2204+rtm2, hrpcnoid_rhps1 on ubuntu2204), and it
+  # is what the PPC's working tree was actually checked out on.
+  AddProject(hrpsys-rhps1
+    GITHUB_PRIVATE isri-aist/hrpsys-rhps1
+    GIT_TAG c6f5d19c987073efcd17aff7d91f8029ed193ed4 # pinned 2026-07-31, was origin/openrtm2
+    SUBFOLDER openhrp
+    SKIP_TEST
+    DEPENDS openhrp3 hrpsys-base
+  )
+
   # The RHPS1 hrpsys/choreonoid bridge. Lands in SOURCE_DESTINATION
   # (workspace/devel) like every other AddProject.
   #
@@ -58,6 +78,6 @@ if(WITH_RHPS1_HARDWARE)
   AddProject(hrpcnoid_rhps1
     GITHUB ThomasDuvinage/hrpcnoid_rhps1
     GIT_TAG 7a6da6984a42bd40395cf0d28b04a3403345c4fa # pinned 2026-07-31, was origin/ubuntu2204
-    DEPENDS mc_rtc openhrp3 hrpsys-base choreonoid RHPS1
+    DEPENDS mc_rtc openhrp3 hrpsys-base choreonoid RHPS1 hrpsys-rhps1
   )
 endif()
