@@ -25,6 +25,28 @@ if(WITH_RHPS1_HARDWARE)
     GIT_TAG d8fa6ce0201ac3b4c8c581b668e1eb3f90f704f6 # pinned 2026-07-31, was origin/topic/ec-master3.2
   )
 
+  # The OpenHRP VRML model. drcutil-superbuild ships HRP2/HRP2KAI/HRP4CR/HRP5P
+  # but nothing for RHPS1, so without this nobody installs
+  # share/OpenHRP-3.1/robot/RHPS1/model/ and RobotHardware dies at startup on
+  #
+  #   ModelLoaderException: .../RHPS1main_sake_sake.wrl cannot be found
+  #   VRML and IOB are inconsistent: joints 0(VRML), 42(IOB)
+  #
+  # The doubled "sake" is not a typo: models are named
+  # RHPS1main_<right_ee>_<left_ee>, and hrpcnoid_rhps1 hardcodes
+  # RHPS1_MODEL_NAME = RHPS1main_sake_sake. The concrete .wrl is not in the
+  # repo either -- it is configure_file'd from RHPS1main_tool.wrl.in for every
+  # pair in EE_TYPES (sake sake2 wrench plate plug leap) and installed to
+  # share/OpenHRP-3.1/robot/RHPS1.
+  #
+  # SUBFOLDER openhrp and SKIP_TEST mirror how drcutil declares HRP5P.
+  AddProject(RHPS1
+    GITHUB_PRIVATE isri-aist/RHPS1
+    GIT_TAG 45050f31f1dc1d50dbf3cf1d67d0832075bfd7f3 # pinned 2026-07-31, was origin/master
+    SUBFOLDER openhrp
+    SKIP_TEST
+  )
+
   # The RHPS1 hrpsys/choreonoid bridge. Lands in SOURCE_DESTINATION
   # (workspace/devel) like every other AddProject.
   #
@@ -36,6 +58,6 @@ if(WITH_RHPS1_HARDWARE)
   AddProject(hrpcnoid_rhps1
     GITHUB ThomasDuvinage/hrpcnoid_rhps1
     GIT_TAG 7a6da6984a42bd40395cf0d28b04a3403345c4fa # pinned 2026-07-31, was origin/ubuntu2204
-    DEPENDS mc_rtc openhrp3 hrpsys-base choreonoid
+    DEPENDS mc_rtc openhrp3 hrpsys-base choreonoid RHPS1
   )
 endif()
