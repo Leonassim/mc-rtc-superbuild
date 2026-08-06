@@ -59,12 +59,20 @@ if(WITH_RHPS1_HARDWARE)
   # openrtm2, not master: it is the branch that matches the rest of this stack
   # (hrpsys-base is on ubuntu2204+rtm2, hrpcnoid_rhps1 on ubuntu2204), and it
   # is what the PPC's working tree was actually checked out on.
+  # Its CMakeLists aborts on "Neither ROBOT nor ENV{ROBOT} are defined", and
+  # neither setup_mc_rtc.sh nor the shell profile exports ROBOT.
+  if(NOT DEFINED ENV{ROBOT})
+    set(hrpsys_rhps1_CMAKE_ARGS CMAKE_ARGS -DROBOT=RHPS1)
+  else()
+    set(hrpsys_rhps1_CMAKE_ARGS)
+  endif()
   AddProject(hrpsys-rhps1
     GITHUB_PRIVATE isri-aist/hrpsys-rhps1
     GIT_TAG c6f5d19c987073efcd17aff7d91f8029ed193ed4 # pinned 2026-07-31, was origin/openrtm2
     SUBFOLDER openhrp
     SKIP_TEST
     DEPENDS openhrp3 hrpsys-base
+    ${hrpsys_rhps1_CMAKE_ARGS}
   )
 
   # The RHPS1 hrpsys/choreonoid bridge. Lands in SOURCE_DESTINATION
