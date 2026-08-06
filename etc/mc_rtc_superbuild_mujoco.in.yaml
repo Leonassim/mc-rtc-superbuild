@@ -1,10 +1,17 @@
 ---
 # mc_mujoco variant of the superbuild mc_rtc configuration.
 #
-# Not loaded by default. Prepend it to MC_RTC_CONTROLLER_CONFIG, which applies
-# its entries last-to-first, so the first entry wins:
+# Applied automatically: the `mc_mujoco` on PATH after sourcing setup_mc_rtc.sh
+# is a shim (libexec/launchers/mc_mujoco) that prepends this file and execs the
+# real binary. Just run `mc_mujoco`.
+#
+# By hand, if you bypass the shim -- MC_RTC_CONTROLLER_CONFIG applies its entries
+# last-to-first, so the first entry wins:
 #
 #   MC_RTC_CONTROLLER_CONFIG=@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_mujoco.yaml:$MC_RTC_CONTROLLER_CONFIG mc_mujoco
+#
+# mc_rtc_ticker has no shim on purpose: it wants the base configuration (RHPS1,
+# Timestep 0.005, i.e. the real robot's), so it is already right.
 #
 # Everything else -- module paths, plugins, LoadUserConfiguration -- still
 # comes from mc_rtc_superbuild.yaml, so the two cannot drift apart. Only what

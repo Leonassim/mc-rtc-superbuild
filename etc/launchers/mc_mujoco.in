@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Launcher shim for mc_mujoco.
+#
+# Installed into a directory that setup_mc_rtc.sh puts AHEAD of
+# @CMAKE_INSTALL_PREFIX@/bin on PATH, so typing `mc_mujoco` reaches this file and
+# not the binary of the same name. It prepends the simulation overlay to
+# MC_RTC_CONTROLLER_CONFIG and execs the real binary by absolute path.
+#
+# Why a shim and not a default in the base config: the base file IS the real
+# robot's configuration. MainRobot: RHPS1 declares 42 joints where 30 are driven
+# (the controller filters refJointOrder itself), and Timestep 0.005 is imposed by
+# RobotHardware.conf and hard-checked by mc_openrtm. Simulation needs the other
+# answer to both -- RHPS1_MuJoCo, which lists the 30 driven joints directly and
+# is the only branch mc_mujoco has a model for, and 1 kHz. Forgetting the overlay
+# used to cost only the wrong robot; since the Timestep split it also silently
+# runs the simulation at 200 Hz, which is a different plant (1 QP tick per policy
+# step instead of 5).
+#
+# mc_rtc_ticker deliberately has NO shim: it wants the base configuration, so it
+# is already correct after sourcing setup_mc_rtc.sh. Absence here is a decision,
+# not an oversight.
+#
+# MC_RTC_CONTROLLER_CONFIG is applied last-to-first, so the first entry wins.
+# A -f passed on the command line is layered after all of them and still wins,
+# which keeps one-off overrides working.
+set -eu
+
+OVERLAY="@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_mujoco.yaml"
+REAL="@CMAKE_INSTALL_PREFIX@/bin/mc_mujoco"
+
+[ -f "$OVERLAY" ] || { echo "mc_mujoco: overlay manquant: $OVERLAY" >&2; exit 1; }
+[ -x "$REAL" ]    || { echo "mc_mujoco: binaire manquant: $REAL" >&2; exit 1; }
+
+export MC_RTC_CONTROLLER_CONFIG="${OVERLAY}${MC_RTC_CONTROLLER_CONFIG:+:${MC_RTC_CONTROLLER_CONFIG}}"
+
+echo "mc_mujoco: config simulation (RHPS1_MuJoCo, Timestep 0.001)" >&2
+exec "$REAL" "$@"

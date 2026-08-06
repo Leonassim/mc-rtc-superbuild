@@ -208,7 +208,10 @@ set(FINAL_MESSAGE
 "
 )
 
-set(FINAL_COMMAND "export PATH=${CMAKE_INSTALL_PREFIX}/bin:$PATH
+# libexec/launchers goes BEFORE bin on PATH: it holds same-named shims that pick
+# the right mc_rtc configuration per interface and then exec the real binary. See
+# etc/launchers/. Sourcing this file twice prepends twice, which is harmless.
+set(FINAL_COMMAND "export PATH=${CMAKE_INSTALL_PREFIX}/libexec/launchers:${CMAKE_INSTALL_PREFIX}/bin:$PATH
 export PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH
 export MC_RTC_CONTROLLER_CONFIG=${CMAKE_INSTALL_PREFIX}/etc/mc_rtc_superbuild.yaml"
 )
@@ -280,6 +283,14 @@ configure_file(etc/mc_rtc_superbuild_mujoco.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_s
 install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
               ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_mujoco.yaml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+
+# Launcher shims. Installed ahead of bin/ on PATH by setup_mc_rtc.sh, so plain
+# `mc_mujoco` picks its own configuration instead of needing the overlay spelled
+# out on every invocation. mc_rtc_ticker has no shim on purpose: the base
+# configuration is what it wants. See etc/launchers/mc_mujoco.in.
+configure_file(etc/launchers/mc_mujoco.in ${CMAKE_BINARY_DIR}/launchers/mc_mujoco @ONLY)
+install(PROGRAMS ${CMAKE_BINARY_DIR}/launchers/mc_mujoco
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/libexec/launchers)
 
 # Show message at the end of install target
 install(CODE "message(\"\")")
