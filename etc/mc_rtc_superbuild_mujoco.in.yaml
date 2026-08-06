@@ -6,9 +6,15 @@
 #
 #   MC_RTC_CONTROLLER_CONFIG=@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_mujoco.yaml:$MC_RTC_CONTROLLER_CONFIG mc_mujoco
 #
-# Everything else -- module paths, plugins, Timestep, LoadUserConfiguration --
-# still comes from mc_rtc_superbuild.yaml, so the two cannot drift apart. The
-# only thing that differs is the robot module: mc_mujoco has no model
-# registered for the real RHPS1 module, and the RHPS1_MuJoCo branch of the
-# module lists the 30 driven joints directly.
+# Everything else -- module paths, plugins, LoadUserConfiguration -- still
+# comes from mc_rtc_superbuild.yaml, so the two cannot drift apart. Only what
+# is genuinely simulation-specific lives here.
+#
+# MainRobot: mc_mujoco has no model registered for the real RHPS1 module, and
+# the RHPS1_MuJoCo branch of the module lists the 30 driven joints directly.
 MainRobot: RHPS1_MuJoCo
+
+# Timestep: the base file carries the real robot's 0.005 (imposed by
+# RobotHardware.conf and hard-checked by mc_openrtm). Simulation is not bound
+# by that and runs the control loop at 1kHz.
+Timestep: 0.001
