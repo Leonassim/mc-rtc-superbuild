@@ -31,14 +31,25 @@ try:
 except ImportError:
   sys.exit("mc_log_ui introuvable. Lancer dans un shell ou setup_mc_rtc.sh est source.")
 
+# ATTENTION : c'est le refJointOrder du module RHPS1 prive de L_HAND/R_HAND,
+# PAS le ref_joint_order de la politique (celui du yaml, qui commence par
+# CHEST_Y). Les vecteurs par joint du controleur -- q_rl, q_zero,
+# q_tracking_error, actionScale, kp, kd -- sont tous indexes ainsi, parce que
+# NewRLQPController.cpp:146 fait `jointNames = robot().refJointOrder()` puis
+# filtre. Verifiable sur n'importe quel log : RL_qZero_3 vaut 0.622021, le q0
+# du genou, et RL_qZero_19 vaut -0.523599, celui du coude gauche.
+#
+# Utiliser l'ordre de la politique ici renomme chaque joint et fabrique de
+# fausses asymetries (constate le 2026-08-07).
 JOINTS = [
-  "CHEST_Y", "CHEST_P", "HEAD_Y", "HEAD_P",
+  "L_CROTCH_Y", "L_CROTCH_R", "L_CROTCH_P", "L_KNEE_P", "L_ANKLE_R", "L_ANKLE_P",
+  "CHEST_Y", "CHEST_P",
+  "R_CROTCH_Y", "R_CROTCH_R", "R_CROTCH_P", "R_KNEE_P", "R_ANKLE_R", "R_ANKLE_P",
+  "HEAD_Y", "HEAD_P",
   "L_SHOULDER_P", "L_SHOULDER_R", "L_SHOULDER_Y", "L_ELBOW_P", "L_ELBOW_Y",
   "L_WRIST_R", "L_WRIST_Y",
   "R_SHOULDER_P", "R_SHOULDER_R", "R_SHOULDER_Y", "R_ELBOW_P", "R_ELBOW_Y",
   "R_WRIST_R", "R_WRIST_Y",
-  "L_CROTCH_Y", "L_CROTCH_R", "L_CROTCH_P", "L_KNEE_P", "L_ANKLE_R", "L_ANKLE_P",
-  "R_CROTCH_Y", "R_CROTCH_R", "R_CROTCH_P", "R_KNEE_P", "R_ANKLE_R", "R_ANKLE_P",
 ]
 
 # Articulations que la gravite charge en station debout. Ce sont celles qui

@@ -1,5 +1,16 @@
 # Resultat : ou part l'erreur de suivi (run du 2026-08-06 18:57)
 
+> **Cette version corrige la precedente, qui etait fausse.** `diag_tracking.py`
+> etiquetait les joints avec le `ref_joint_order` de la politique alors que
+> `RL_q_tracking_error` est indexe en `refJointOrder` du module. Chaque nom
+> etait donc decale, et la conclusion "asymetrie jambe droite / jambe gauche"
+> qui en decoulait n'existait pas. Le script est corrige dans le meme commit.
+>
+> Preuve de l'ordre : `RL_qZero` reproduit le `q0` du yaml a l'erreur 0.000000
+> pres en `refJointOrder`, contre 8.36 en ordre politique. `RL_qZero_3` vaut
+> 0.622021 (genou) et `RL_qZero_19` vaut -0.523599 (coude gauche).
+> Origine : `NewRLQPController.cpp:146`, `jointNames = robot().refJointOrder()`.
+
 `diag_tracking.py` sur `/tmp/mc-control-NewRLQPController-2026-08-06-18-57-28.bin`
 (204343 echantillons, 1022 s, dt 5.000 ms). Lecture seule.
 
@@ -7,88 +18,93 @@
 
 | seuil | occurrences | frequence |
 |---|---|---|
-| > 6 ms (1.2x) | 195 | 0.19 / s |
-| > 10 ms (2.0x) | 193 | 0.19 / s |
-| > 25 ms (5.0x) | 190 | 0.19 / s |
+| > 6 ms | 195 | 0.19 / s |
+| > 10 ms | 193 | 0.19 / s |
+| > 25 ms | 190 | 0.19 / s |
 | pire | 85.0 ms | |
 
-Les trois comptes sont quasi identiques : **presque tous les decrochages
-depassent 25 ms**, ce ne sont pas des depassements marginaux mais de vrais
-blocages. Un toutes les 5 secondes environ. Le critere du script
-("plusieurs par seconde") n'est pas atteint, donc ce n'est probablement pas
-la cause dominante -- mais 190 blocages de plus de 25 ms sur 17 minutes ne
-sont pas anodins. `LogPolicy: threaded` reste a essayer : `perf_Log`
-culminait a 81.5 ms sur ce meme run.
+Les trois comptes sont quasi identiques : presque tous les decrochages
+depassent 25 ms, ce ne sont pas des depassements marginaux. Un toutes les
+5 secondes. Sous le critere du script ("plusieurs par seconde"), donc
+probablement pas la cause dominante. `perf_Log` culminait a 81.5 ms sur ce
+run : `LogPolicy: threaded` reste a essayer.
 
 ## L'erreur est un biais, pas une dynamique
 
 **92 % de l'erreur est un biais constant.** Le pic a 1.9 Hz est la cadence de
-pas. Ce n'est pas un tremblement.
+pas, pas une oscillation parasite.
 
-## Mais l'hypothese "saturation de couple" ne tient pas
-
-Le critere du script demande un biais **eleve ET concentre sur les jambes**.
-Le rapport mesure est de **1.4x** seulement :
+## L'hypothese "saturation de couple" ne tient toujours pas
 
 | | biais moyen |
 |---|---|
-| articulations chargees par la gravite | 14.45 deg |
-| toutes les autres | 10.67 deg |
+| articulations chargees par la gravite | 14.80 deg |
+| toutes les autres | 10.58 deg |
 
-Trois faits contredisent la saturation :
+Rapport **1.4x** : eleve, mais pas concentre sur les jambes. Le critere du
+script demande les deux.
 
-**1. Asymetrie gauche/droite massive.** La jambe gauche suit presque
-parfaitement, la droite est tres decalee :
+## Ce que montre le tableau correctement etiquete
 
-| droite | biais | gauche | biais |
-|---|---|---|---|
-| R_CROTCH_P | **-37.29 deg** | L_CROTCH_P | +1.59 deg |
-| R_KNEE_P | **+22.61 deg** | L_KNEE_P | -1.65 deg |
-| R_CROTCH_R | **+22.85 deg** | L_CROTCH_R | -5.03 deg |
-| R_CROTCH_Y | **-18.74 deg** | L_CROTCH_Y | +2.28 deg |
+| | bras | jambe |
+|---|---|---|
+| **gauche** | **2.22 deg** | 16.45 deg |
+| **droite** | **18.36 deg** | 15.19 deg |
 
-Une saturation de couple serait symetrique : les deux genoux portent une
-charge comparable. Un genou a 22.61 deg de biais et l'autre a 1.65 deg ne
-s'explique pas par une limite d'actionneur commune.
+**Les deux jambes se comportent pareil** (16.45 vs 15.19 deg) : il n'y a pas
+d'asymetrie de jambe. Le bras gauche suit tres bien (2.22 deg). **Le bras
+droit est aussi mauvais que les jambes** (18.36 deg) alors qu'il ne porte
+aucune charge gravitaire.
 
-**2. Les bras sont autant touches que les jambes**, alors qu'ils ne portent
-quasiment aucune charge gravitaire : L_SHOULDER_P -21.37, L_ELBOW_Y -20.87,
-L_SHOULDER_R +20.22, R_SHOULDER_Y +18.11 deg. Et CHEST_Y a -28.28 deg.
+Les cinq plus gros biais :
 
-**3. Signature de butee, pas d'affaissement.** Temps passe au-dela de 90 % de
-l'erreur max :
+| joint | biais | dynamique |
+|---|---|---|
+| R_ELBOW_P | **-37.29 deg** | 0.77 |
+| L_CROTCH_Y | -28.28 deg | 6.70 |
+| R_SHOULDER_Y | 22.85 deg | 1.61 |
+| R_ELBOW_Y | 22.61 deg | 1.69 |
+| L_ANKLE_R | -21.37 deg | 5.00 |
+
+Le bras droit a des **dynamiques tres faibles** (0.77 a 2.44) : ce sont des
+decalages fixes, l'articulation ne bouge quasiment pas autour de son ecart.
+Les jambes ont des dynamiques plus elevees (2.63 a 13.63), elles travaillent.
+
+Temps passe au-dela de 90 % de l'erreur max :
 
 | joint | % du temps |
 |---|---|
-| R_CROTCH_P | **100.0 %** |
-| R_CROTCH_R | 94.8 % |
-| L_ANKLE_P | 94.8 % |
-| R_SHOULDER_R | 94.7 % |
-| L_ELBOW_Y | 94.7 % |
+| R_ELBOW_P | **100.0 %** |
+| R_SHOULDER_Y | 94.8 % |
+| R_SHOULDER_P | 94.8 % |
+| R_ANKLE_R | 94.7 % |
+| R_CROTCH_Y | 94.7 % |
 
-`R_CROTCH_P` reste en permanence a son ecart maximal : l'articulation
-n'approche jamais sa cible. C'est le comportement d'un ecretage ou d'une
-contrainte active, pas d'un actionneur qui flechit sous une charge variable.
+Quatre sur cinq a droite, trois au bras droit. `R_ELBOW_P` reste en
+permanence a son ecart maximal.
 
 ## Ce que les chiffres ne disent pas
 
-Rien ici n'identifie la cause. Ils excluent seulement la saturation de couple
-comme explication principale, et orientent vers quelque chose de **specifique
-au cote droit** et actif aussi sur le haut du corps.
+Ils excluent la saturation de couple comme explication principale : les jambes
+sont symetriques et le bras droit, non charge, est autant en defaut.
 
-Pistes non testees, par ordre de cout :
+Le bras droit maintenu a un decalage quasi constant est le fait le plus
+saillant. La pose relevee sur le robot notait deja "bras droit leve un peu
+vers l'avant". Rien ici n'en identifie la cause.
 
-- contraintes de limites articulaires du QP qui saturent (le script signale
-  des joints bloques a leur ecart max)
-- poids de la `PostureTask` face aux autres taches
-- decalage de calibration ou d'offset sur les articulations de la jambe droite
-- coherence entre le `refJointOrder` de la politique et celui du robot, cote
-  droit
+Pistes non testees :
+
+- une tache ou une contrainte qui immobilise le bras droit (le controleur
+  ajoute une tache `FSM_body6d_rhps1_BODY` au demarrage)
+- butee articulaire atteinte sur R_ELBOW_P
+- decalage de calibration cote droit
+- le biais de jambe, symetrique, reste inexplique et pourrait avoir une autre
+  cause que celui du bras
 
 La section C de la mission (ticker a 0.005 contre mc_mujoco a 1 kHz) reste la
-comparaison qui separerait proprement "le QP ne suit pas" de "les capteurs".
+comparaison qui separerait "le QP ne suit pas" de "les capteurs".
 
-## Sortie complete
+## Sortie complete, apres correction
 
 ```
 log : /tmp/mc-control-NewRLQPController-2026-08-06-18-57-28.bin
@@ -109,42 +125,42 @@ DECROCHAGES DE LA BOUCLE
 ERREUR DE SUIVI, ARTICULATION PAR ARTICULATION
 ====================================================================
 joint             biais deg  dynamique  |max| deg   charge
-R_CROTCH_P           -37.29       0.77      37.71  <-- gravite
-CHEST_Y              -28.28       6.70      30.33
-R_CROTCH_R            22.85       1.61      23.72
-R_KNEE_P              22.61       1.69      31.27  <-- gravite
-L_SHOULDER_P         -21.37       5.00      23.47
-L_ELBOW_Y            -20.87       4.93      23.29
-L_ANKLE_P             20.50       1.24      22.23  <-- gravite
-L_SHOULDER_R          20.22       4.97      25.58
-R_CROTCH_Y           -18.74       2.44      31.51
-R_SHOULDER_Y          18.11       5.06      20.29
-HEAD_P                15.42      13.63      28.26
-R_SHOULDER_R         -14.28       3.35      15.59
-R_SHOULDER_P          13.43      12.44      19.25
-L_WRIST_R             13.10       3.53      19.15
-L_WRIST_Y            -11.34       3.08      18.31
-HEAD_Y               -10.25       2.63      12.33
-L_CROTCH_R            -5.03       1.20       5.49
-L_SHOULDER_Y           3.63       0.87       4.60
-R_ANKLE_R              3.50       0.81       4.24
-CHEST_P                3.17       1.47       7.69
-R_ANKLE_P             -3.06       0.90       6.62  <-- gravite
-R_WRIST_R             -3.03       0.75       4.02
-L_ELBOW_P              2.35       2.50      15.71
-L_CROTCH_Y             2.28       0.78       3.03
-R_ELBOW_Y              2.17       0.55       6.31
-L_KNEE_P              -1.65       0.55       3.90  <-- gravite
-L_CROTCH_P             1.59       0.57       3.06  <-- gravite
-L_ANKLE_R              1.57       0.84       4.32
-R_ELBOW_P             -0.64       0.18       1.27
-R_WRIST_Y             -0.41       0.47       6.72
+R_ELBOW_P            -37.29       0.77      37.71
+L_CROTCH_Y           -28.28       6.70      30.33
+R_SHOULDER_Y          22.85       1.61      23.72
+R_ELBOW_Y             22.61       1.69      31.27
+L_ANKLE_R            -21.37       5.00      23.47
+R_CROTCH_Y           -20.87       4.93      23.29
+R_SHOULDER_P          20.50       1.24      22.23
+L_ANKLE_P             20.22       4.97      25.58  <-- gravite
+R_SHOULDER_R         -18.74       2.44      31.51
+R_ANKLE_P             18.11       5.06      20.29  <-- gravite
+L_KNEE_P              15.42      13.63      28.26  <-- gravite
+R_ANKLE_R            -14.28       3.35      15.59
+R_KNEE_P              13.43      12.44      19.25  <-- gravite
+R_CROTCH_R            13.10       3.53      19.15
+R_CROTCH_P           -11.34       3.08      18.31  <-- gravite
+L_CROTCH_P           -10.25       2.63      12.33  <-- gravite
+L_ELBOW_P             -5.03       1.20       5.49
+CHEST_Y                3.63       0.87       4.60
+R_WRIST_R              3.50       0.81       4.24
+L_CROTCH_R             3.17       1.47       7.69
+R_WRIST_Y             -3.06       0.90       6.62
+L_SHOULDER_P          -3.03       0.75       4.02
+CHEST_P                2.35       2.50      15.71
+L_SHOULDER_Y           2.28       0.78       3.03
+HEAD_P                 2.17       0.55       6.31
+L_WRIST_R             -1.65       0.55       3.90
+L_ELBOW_Y              1.59       0.57       3.06
+L_WRIST_Y              1.57       0.84       4.32
+HEAD_Y                -0.64       0.18       1.27
+L_SHOULDER_R          -0.41       0.47       6.72
 
 ====================================================================
 VERDICT
 ====================================================================
-biais moyen, articulations chargees par la gravite :  14.45 deg
-biais moyen, toutes les autres                     :  10.67 deg
+biais moyen, articulations chargees par la gravite :  14.80 deg
+biais moyen, toutes les autres                     :  10.58 deg
 rapport : 1.4x
 
 part de l'erreur qui est un biais constant : 92 %
@@ -154,9 +170,9 @@ part de l'erreur qui est un biais constant : 92 %
     poids de taches et les contraintes qui saturent.
 
 Temps passe a plus de 90 % de l'erreur max (signe d'une butee) :
-  R_CROTCH_P      100.0 %
-  R_CROTCH_R       94.8 %
-  L_ANKLE_P        94.8 %
-  R_SHOULDER_R     94.7 %
-  L_ELBOW_Y        94.7 %
+  R_ELBOW_P       100.0 %
+  R_SHOULDER_Y     94.8 %
+  R_SHOULDER_P     94.8 %
+  R_ANKLE_R        94.7 %
+  R_CROTCH_Y       94.7 %
 ```
