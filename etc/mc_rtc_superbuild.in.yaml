@@ -30,6 +30,13 @@ LoadUserConfiguration: false
 # controller will not start at all if this drifts. mc_mujoco overrides it.
 Timestep: 0.005
 
+# Ecrire le log depuis un thread separe plutot que depuis run(). Sur le run du
+# 2026-08-06, perf_Log culminait a 81.5 ms et perf_GlobalRun a 82.3 ms pour un
+# budget de 5 ms, alors que le solveur ne depassait jamais 1.83 ms : les pics
+# venaient de l'ecriture disque. mc_rtc recommande cette politique sur systeme
+# temps reel. Contrepartie : sur un arret brutal, la fin du log peut manquer.
+LogPolicy: threaded
+
 # RHPS1, not RHPS1_MuJoCo: this is the real-robot entry point. The module's
 # non-mujoco branch lists 32 joints (L_HAND/R_HAND on top of the 30 driven
 # ones); NewRLQPController filters refJointOrder down to the 1-DoF joints the
