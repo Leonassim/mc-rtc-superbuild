@@ -9,6 +9,10 @@ AddProject(rl_controller
   # 441b61f switches the Encoder observer to finite differences: the real robot
   # publishes no encoder velocities and EncoderObserver::run throws on the empty
   # vector, which deactivated MCControl mid-run on hardware.
-  GIT_TAG 80d78d4 # pinned 2026-08-07, was f82bfba
+  # 52e2df8 embarque toutes les politiques dans policy/ (fini les chemins
+  # absolus vers un $HOME, le PC du robot n'a plus besoin de mjlab-rhps1) et
+  # ajoute l'index 3, abl15 au checkpoint final. use_QP true sur les quatre,
+  # default_policy_index toujours 0.
+  GIT_TAG 52e2df8 # pinned 2026-08-07, was 80d78d4 (meme jour)
   DEPENDS mc_rtc mc_joystick_plugin
 )
