@@ -13,6 +13,8 @@ AddProject(rl_controller
   # absolus vers un $HOME, le PC du robot n'a plus besoin de mjlab-rhps1) et
   # ajoute l'index 3, abl15 au checkpoint final. use_QP true sur les quatre,
   # default_policy_index toujours 0.
-  GIT_TAG 52e2df8 # pinned 2026-08-07, was 80d78d4 (meme jour)
+  # 6b505f1 corrige q_tracking_error, qui indexait encoderValues() en ordre
+  # filtre : tout le bras droit se comparait au joint voisin.
+  GIT_TAG 6b505f1 # pinned 2026-08-07, was 52e2df8 (meme jour)
   DEPENDS mc_rtc mc_joystick_plugin
 )
