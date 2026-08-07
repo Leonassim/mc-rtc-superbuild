@@ -54,3 +54,13 @@ RobotModulePaths:
   - "@CMAKE_INSTALL_PREFIX@/lib/mc_robots"
 ControllerModulePaths:
   - "@CMAKE_INSTALL_PREFIX@/lib/mc_controller"
+
+# PostureTask stiffness under the QP. Tuned on the robot on 2026-08-07: 1600
+# tracks noticeably better than the 8000 the controller derived from
+# 0.2/(policy_step_size*Timestep) at 200 Hz.
+#
+# It lives here rather than in NewRLQPController.yaml on purpose: mc_rtc uses
+# the global configuration as the base for a controller config and lets the
+# controller yaml override it, so keeping the key out of the controller yaml is
+# what lets this file and the mujoco overlay carry different values.
+posture_stiffness: 1600

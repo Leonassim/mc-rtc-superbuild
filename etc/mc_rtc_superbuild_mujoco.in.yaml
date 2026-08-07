@@ -25,3 +25,8 @@ MainRobot: RHPS1_MuJoCo
 # RobotHardware.conf and hard-checked by mc_openrtm). Simulation is not bound
 # by that and runs the control loop at 1kHz.
 Timestep: 0.001
+
+# Simulation keeps the value the old formula produced at 1 kHz. Not retuned:
+# 1600 was measured on the robot at 200 Hz and has not been tried here, and
+# changing both at once would remove the reference point.
+posture_stiffness: 40000

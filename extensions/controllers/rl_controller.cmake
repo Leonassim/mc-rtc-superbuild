@@ -15,6 +15,6 @@ AddProject(rl_controller
   # default_policy_index toujours 0.
   # 6b505f1 corrige q_tracking_error, qui indexait encoderValues() en ordre
   # filtre : tout le bras droit se comparait au joint voisin.
-  GIT_TAG 6b505f1 # pinned 2026-08-07, was 52e2df8 (meme jour)
+  GIT_TAG b55b030 # pinned 2026-08-07, was 6b505f1
   DEPENDS mc_rtc mc_joystick_plugin
 )
