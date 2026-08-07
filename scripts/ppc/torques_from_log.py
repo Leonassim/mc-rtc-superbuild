@@ -64,9 +64,18 @@ def main():
     sys.exit(f"usage: {sys.argv[0]} <log.bin>")
   log = read_log(sys.argv[1])
 
-  if "tauIn_0" not in log:
-    sys.exit("tauIn absent du log : RobotHardware n'etait pas connecte, ou le log\n"
-             "date d'avant que state.torque soit calcule (TransListenerEx).")
+  # Depuis 466caa3 le controleur retire l'entree "tauIn" de mc_rtc, dont le nom
+  # ment (c'est un courant), et republie la meme donnee sous joint_current_A.
+  # Les deux n'ont PAS la meme indexation : joint_current_A suit le
+  # refJointOrder filtre (30 joints, sans les mains), tauIn le refJointOrder
+  # complet (42, mains comprises).
+  if "NewRLQPController_joint_current_A_0" in log:
+    prefix, order = "NewRLQPController_joint_current_A", [j for j in RJO if not j.endswith("_HAND")]
+  elif "tauIn_0" in log:
+    prefix, order = "tauIn", RJO
+  else:
+    sys.exit("ni joint_current_A ni tauIn dans ce log : RobotHardware n'etait pas\n"
+             "connecte, ou le log date d'avant le calcul de state.torque.")
 
   n = len(log["t"])
   print(f"log : {sys.argv[1]}")
@@ -78,8 +87,8 @@ def main():
 
   any_signal = False
   for name, (N, Kt, cl, pl, _) in SOLO.items():
-    i = RJO.index(name)
-    cur = np.asarray(log[f"tauIn_{i}"], dtype=float)
+    i = order.index(name)
+    cur = np.asarray(log[f"{prefix}_{i}"], dtype=float)
     if np.allclose(cur, 0.0):
       print(f"{name:14s} {'--':>8s} {'--':>8s} {'--':>9s} {'--':>9s} "
             f"{'--':>10s} {'--':>8s}   (identiquement nul)")
