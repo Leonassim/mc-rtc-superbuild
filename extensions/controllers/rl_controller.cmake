@@ -9,6 +9,6 @@ AddProject(rl_controller
   # 441b61f switches the Encoder observer to finite differences: the real robot
   # publishes no encoder velocities and EncoderObserver::run throws on the empty
   # vector, which deactivated MCControl mid-run on hardware.
-  GIT_TAG e109456 # pinned 2026-08-07, was 466caa3
+  GIT_TAG 80d78d4 # pinned 2026-08-07, was f82bfba
   DEPENDS mc_rtc mc_joystick_plugin
 )
