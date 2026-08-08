@@ -33,5 +33,21 @@ REAL="@CMAKE_INSTALL_PREFIX@/bin/mc_mujoco"
 
 export MC_RTC_CONTROLLER_CONFIG="${OVERLAY}${MC_RTC_CONTROLLER_CONFIG:+:${MC_RTC_CONTROLLER_CONFIG}}"
 
+# Armatures reelles. Le XML de rhps1_mj_description porte armature="1" partout
+# via son bloc <default>, soit dix fois le vrai rotor du genou (0.10672) -- et
+# dans le sens qui trompe, puisqu'une armature trop grande amortit. mc_mujoco
+# simulerait sinon un robot plus indulgent que le vrai ET que celui sur lequel la
+# politique s'entraine. Le script ecrit un modele derive dans le dossier
+# utilisateur ; ni le depot de description ni l'arbre d'installation ne bougent.
+#
+# En cas d'echec on s'arrete : lancer avec armature 1.0 en croyant avoir les
+# vraies est exactement le genre de faux positif qu'on passe des jours a traquer.
+if ! "@CMAKE_INSTALL_PREFIX@/libexec/launchers/rhps1_real_armature.py" \
+     "@CMAKE_INSTALL_PREFIX@/share/mc_mujoco" \
+     "$HOME/.config/mc_rtc/mc_mujoco"; then
+  echo "mc_mujoco: generation des armatures echouee, arret" >&2
+  exit 1
+fi
+
 echo "mc_mujoco: config simulation (RHPS1_MuJoCo, Timestep 0.001)" >&2
 exec "$REAL" "$@"

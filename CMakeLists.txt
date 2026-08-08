@@ -290,6 +290,7 @@ install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
 # configuration is what it wants. See etc/launchers/mc_mujoco.in.
 configure_file(etc/launchers/mc_mujoco.in ${CMAKE_BINARY_DIR}/launchers/mc_mujoco @ONLY)
 install(PROGRAMS ${CMAKE_BINARY_DIR}/launchers/mc_mujoco
+                 ${CMAKE_CURRENT_SOURCE_DIR}/etc/launchers/rhps1_real_armature.py
         DESTINATION ${CMAKE_INSTALL_PREFIX}/libexec/launchers)
 
 # Show message at the end of install target
