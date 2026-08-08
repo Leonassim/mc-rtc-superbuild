@@ -15,6 +15,9 @@ AddProject(rl_controller
   # default_policy_index toujours 0.
   # 6b505f1 corrige q_tracking_error, qui indexait encoderValues() en ordre
   # filtre : tout le bras droit se comparait au joint voisin.
-  GIT_TAG b55b030 # pinned 2026-08-07, was 6b505f1
+  # 801f3c4 met le run 2026-08-07_15-40-43 (checkpoint 7050) sur l'index 1,
+  # observation 246 dims. Les blocs gait_phase et raw_torque deviennent
+  # optionnels dans le switch au lieu d'un quatrieme corps duplique.
+  GIT_TAG 801f3c4 # pinned 2026-08-08, was b55b030
   DEPENDS mc_rtc mc_joystick_plugin
 )
