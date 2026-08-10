@@ -80,6 +80,28 @@ def main() -> int:
     print("rhps1_real_armature: meshdir introuvable dans le XML", file=sys.stderr)
     return 1
 
+  # RHPS1_INTEGRATOR : le <option> du XML ne specifie aucun integrateur, donc
+  # mc_mujoco tourne en Euler (verifie : m.opt.integrator == 0) alors que mjlab
+  # tourne en implicitfast (mjINT_IMPLICITFAST == 3). C'est la seule
+  # difference structurelle entre les deux simulateurs, les deux calculant leur
+  # PD a l'exterieur et l'appliquant comme couple sur un actionneur `motor`.
+  #
+  # Euler integre explicitement les forces dependant de la vitesse. Diviser une
+  # inertie par dix sans toucher au kd rapproche donc la boucle de sa limite de
+  # stabilite, et c'est le premier suspect de la vibration apparue avec les
+  # vraies armatures. A tester avec RHPS1_INTEGRATOR=implicitfast.
+  integrator = os.environ.get("RHPS1_INTEGRATOR")
+  if integrator:
+    m = re.search(r"<option\b[^>]*>", xml)
+    if not m:
+      print("rhps1_real_armature: balise <option> introuvable", file=sys.stderr)
+      return 1
+    tag = re.sub(r'\s+integrator="[^"]*"', "", m.group(0))
+    tag = tag[:-2].rstrip() + f' integrator="{integrator}"/>' if tag.endswith("/>") \
+        else tag[:-1].rstrip() + f' integrator="{integrator}">'
+    xml = xml[: m.start()] + tag + xml[m.end():]
+    print(f"mc_mujoco: integrateur force a {integrator!r}", file=sys.stderr)
+
   # Une armature par articulation. Le `armature="1"` du bloc <default> reste et
   # continue de servir a tout le reste : verins, mains, doigts.
   missing = []
