@@ -28,6 +28,7 @@ inertie cote articulation demande la geometrie des points d'attache, absente des
 depots. Meme decoupage que cote entrainement.
 """
 
+import os
 import pathlib
 import re
 import sys
@@ -50,6 +51,18 @@ CYLINDER = {"L_CROTCH_P", "R_CROTCH_P", "L_CROTCH_R", "R_CROTCH_R",
 
 
 def main() -> int:
+  # RHPS1_ARMATURE_ONLY restreint quelles articulations recoivent leur vraie
+  # armature ; toutes les autres restent au placeholder 1.0 du XML. Sert a
+  # bisecter un probleme observe apres cette correction sans avoir a editer le
+  # script : par exemple RHPS1_ARMATURE_ONLY="CROTCH|KNEE|ANKLE" ne corrige que
+  # les jambes, RHPS1_ARMATURE_ONLY="" (une regex qui ne matche rien) revient au
+  # comportement d'avant ce script pour tout comparer d'un coup.
+  only = os.environ.get("RHPS1_ARMATURE_ONLY")
+  only_re = re.compile(only) if only is not None else None
+  if only_re is not None:
+    print(f"mc_mujoco: RHPS1_ARMATURE_ONLY={only!r} -- armature reelle restreinte "
+          f"a ce filtre", file=sys.stderr)
+
   share, user = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
   src = share / "RHPS1" / "xml" / "RHPS1main.xml"
   meshes = share / "RHPS1" / "meshes"
@@ -70,7 +83,11 @@ def main() -> int:
   # Une armature par articulation. Le `armature="1"` du bloc <default> reste et
   # continue de servir a tout le reste : verins, mains, doigts.
   missing = []
+  applied = []
   for joint, value in ARMATURE.items():
+    if only_re is not None and not only_re.search(joint):
+      continue
+    applied.append(joint)
     pattern = rf'(<joint name="{joint}")((?:(?!/>).)*?)(\s*/>)'
     def repl(m: re.Match) -> str:
       body = re.sub(r'\s+armature="[^"]*"', "", m.group(2))
@@ -98,8 +115,8 @@ def main() -> int:
     "# Masque la version installee (mj_sim.cpp, get_robot_cfg_path).\n"
     f'xmlModelPath: "{out_xml}"\n'
     f'pdGainsPath: "{pdgains}"\n')
-  print(f"mc_mujoco: armatures reelles sur {len(ARMATURE)} articulations, "
-        f"{len(CYLINDER)} a verins laissees a 1.0")
+  print(f"mc_mujoco: armatures reelles sur {len(applied)}/{len(ARMATURE)} "
+        f"articulations, {len(CYLINDER)} a verins laissees a 1.0")
   return 0
 
 
