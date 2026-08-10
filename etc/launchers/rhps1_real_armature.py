@@ -132,11 +132,24 @@ def main() -> int:
   user.mkdir(parents=True, exist_ok=True)
   out_xml = user / "RHPS1main_real_armature.xml"
   out_xml.write_text(xml)
+
+  # Ce fichier masque l'installe EN ENTIER (mj_sim.cpp, get_robot_cfg_path prend
+  # le premier trouve, il ne fusionne pas). On repart donc du contenu installe et
+  # on ne remplace que le xmlModelPath de premier niveau -- celui du robot
+  # principal. Le reecrire de zero ferait disparaitre les sections des variantes
+  # RHPS1_sake2_sake2_MuJoCo et RHPS1_leap_leap_MuJoCo, qui cesseraient de
+  # trouver leur modele sans que rien ne le signale.
+  cfg = (share / "rhps1.yaml").read_text()
+  cfg, n = re.subn(r'^xmlModelPath:.*$', f'xmlModelPath: "{out_xml}"', cfg,
+                   count=1, flags=re.M)
+  if n != 1:
+    print("rhps1_real_armature: xmlModelPath de premier niveau introuvable dans "
+          f"{share / 'rhps1.yaml'}", file=sys.stderr)
+    return 1
   (user / "rhps1.yaml").write_text(
     "# Genere a chaque lancement par le shim mc_mujoco. Ne pas editer.\n"
-    "# Masque la version installee (mj_sim.cpp, get_robot_cfg_path).\n"
-    f'xmlModelPath: "{out_xml}"\n'
-    f'pdGainsPath: "{pdgains}"\n')
+    "# Copie de la version installee, avec le seul xmlModelPath principal\n"
+    "# redirige vers le modele a armatures reelles.\n" + cfg)
   print(f"mc_mujoco: armatures reelles sur {len(applied)}/{len(ARMATURE)} "
         f"articulations, {len(CYLINDER)} a verins laissees a 1.0")
   return 0
