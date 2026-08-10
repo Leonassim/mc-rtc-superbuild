@@ -57,11 +57,35 @@ def main() -> int:
   # script : par exemple RHPS1_ARMATURE_ONLY="CROTCH|KNEE|ANKLE" ne corrige que
   # les jambes, RHPS1_ARMATURE_ONLY="" (une regex qui ne matche rien) revient au
   # comportement d'avant ce script pour tout comparer d'un coup.
-  only = os.environ.get("RHPS1_ARMATURE_ONLY")
-  only_re = re.compile(only) if only is not None else None
-  if only_re is not None:
-    print(f"mc_mujoco: RHPS1_ARMATURE_ONLY={only!r} -- armature reelle restreinte "
-          f"a ce filtre", file=sys.stderr)
+  # DESACTIVE PAR DEFAUT depuis le 2026-08-10. Les vraies armatures rendent le
+  # modele numeriquement instable avec les gains PD actuels, et ce n'est pas une
+  # question de reglage fin : mesure sur un systeme a 1 DDL reproduisant le
+  # poignet (I_segment 0.0033, armature 0.01485, kp 14000, kd 240), le critere
+  # d'integration explicite kd*dt/M vaut 13 pour un seuil de 2. Sans ecretage
+  # (mc_mujoco : forcelimited="false") l'articulation part a 2420 rad ; avec
+  # ecretage (mjlab, effort_limit) elle bourdonne a 1-2 degres en restant collee
+  # a sa limite de couple -- ce que confirme torque_limit_ratio_max = 1.0000 sur
+  # tout le run d'entrainement 2026-08-07_15-40-43.
+  #
+  # implicitfast n'y change RIEN, verifie : chiffres identiques a Euler a la
+  # virgule pres. MuJoCo ne peut pas integrer implicitement un couple fourni via
+  # ctrl, il ignore qu'il depend de la vitesse.
+  #
+  # Les gains 20000/400 ont ete regles AVEC armature=1.0 ; ils emulent un servo
+  # de position raide et ne sont pas separables de cette inertie. Utiliser les
+  # vraies armatures demande de retuner kp et kd par articulation pour preserver
+  # la reponse en boucle fermee -- et donc de refaire action_scale, qui vaut
+  # effort_limit/kp. C'est un chantier, pas un reglage.
+  #
+  # RHPS1_REAL_ARMATURE=1 reactive la surcharge pour experimenter.
+  if not os.environ.get("RHPS1_REAL_ARMATURE"):
+    only_re = re.compile("$^")  # ne matche rien
+  else:
+    only = os.environ.get("RHPS1_ARMATURE_ONLY")
+    only_re = re.compile(only) if only is not None else None
+    if only_re is not None:
+      print(f"mc_mujoco: RHPS1_ARMATURE_ONLY={only!r} -- armature reelle "
+            f"restreinte a ce filtre", file=sys.stderr)
 
   share, user = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
   src = share / "RHPS1" / "xml" / "RHPS1main.xml"
