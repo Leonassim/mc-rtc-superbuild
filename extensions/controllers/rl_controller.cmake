@@ -24,6 +24,10 @@ AddProject(rl_controller
   # policy 0 (impact_vel -0.474 vs -0.19, fell_down 0.645 vs 0.000) -- essai
   # mc_mujoco voulu malgre ca, ne pas armer sur robot reel. use_QP toujours
   # true sur les cinq, default_policy_index toujours 0.
-  GIT_TAG 4acbf5d # pinned 2026-08-14, was 801f3c4
+  # 5d0fcf5 corrige "Wrote 0 expects 246" : 4acbf5d ajoutait l'index 4 au yaml
+  # sans ajouter sa case dans le switch(currentPolicyIndex) qui construit
+  # l'observation. Sans elle l'index 4 tombait dans default: et l'observation
+  # restait a zero. Symptome vu au premier essai mc_mujoco de l'index 4.
+  GIT_TAG 5d0fcf5 # pinned 2026-08-14, was 4acbf5d
   DEPENDS mc_rtc mc_joystick_plugin
 )
