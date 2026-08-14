@@ -18,6 +18,12 @@ AddProject(rl_controller
   # 801f3c4 met le run 2026-08-07_15-40-43 (checkpoint 7050) sur l'index 1,
   # observation 246 dims. Les blocs gait_phase et raw_torque deviennent
   # optionnels dans le switch au lieu d'un quatrieme corps duplique.
-  GIT_TAG 801f3c4 # pinned 2026-08-08, was b55b030
+  # 4acbf5d ajoute l'index 4 : run 2026-08-12_20-36-28, premiere policy
+  # entrainee avec le filtre de PostureTask modelise (posture_stiffness=1600
+  # lu par policy, plus le global). RESERVE : metriques finales en deca de la
+  # policy 0 (impact_vel -0.474 vs -0.19, fell_down 0.645 vs 0.000) -- essai
+  # mc_mujoco voulu malgre ca, ne pas armer sur robot reel. use_QP toujours
+  # true sur les cinq, default_policy_index toujours 0.
+  GIT_TAG 4acbf5d # pinned 2026-08-14, was 801f3c4
   DEPENDS mc_rtc mc_joystick_plugin
 )
