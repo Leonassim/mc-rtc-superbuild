@@ -186,6 +186,29 @@ def main() -> int:
     print("rhps1_real_armature: top-level xmlModelPath not found in "
           f"{share / 'rhps1.yaml'}", file=sys.stderr)
     return 1
+
+  # RHPS1main's gains file is misaligned by one from line 24 on. `500 5` is
+  # L_HAND's gripper entry -- the leap and sake2 variants carry the same value at
+  # the same line, and their joint order does include a hand. RHPS1main's does
+  # not, so loadGain lands it on R_SHOULDER_P: kp 500 instead of 15000, 30x
+  # softer than its own mirror, and R_WRIST_Y then falls off the end unserved.
+  # Measured in a controller log, that joint sits 9 mrad under its q0 while the
+  # other 29 track theirs to 0.4-3 mrad. Training gives both shoulders 15000/240.
+  #
+  # Fixed here rather than in rhps1_mj_description so the two machines agree
+  # without waiting on a PR to a shared repo.
+  gains = pdgains.read_text().splitlines()
+  if len(gains) == 30 and gains[23].split() == ["500", "5"]:
+    gains[23:25] = ["15000 240", "14000 240"]
+    out_gains = user / "PDgains_sim_realigned.dat"
+    out_gains.write_text("\n".join(gains) + "\n")
+    cfg, n = re.subn(r'^pdGainsPath:.*$', f'pdGainsPath: "{out_gains}"', cfg,
+                     count=1, flags=re.M)
+    if n != 1:
+      print("rhps1_real_armature: top-level pdGainsPath not found", file=sys.stderr)
+      return 1
+    print("mc_mujoco: gains RHPS1main realignes (R_SHOULDER_P 500 -> 15000)",
+          file=sys.stderr)
   (user / "rhps1.yaml").write_text(
     "# Generated on every launch by the mc_mujoco shim. Do not edit.\n"
     "# Copy of the installed version, with only the main xmlModelPath\n"
