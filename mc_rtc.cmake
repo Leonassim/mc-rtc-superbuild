@@ -284,7 +284,19 @@ AddProject(
   # GITHUB_PRIVATE bastien-muraccioli/mc_state_observation
   # GIT_TAG origin/main
   GITHUB ArnaudDmt/mc_state_observation
-  GIT_TAG 309a692d816ba2cec4de9df97b4b0c85331929a8 # pinned 2026-07-22, was origin/addWaiko
+  GIT_TAG e7197faa0fa45c73152ce996e0b0c5d5ef0a38f1 # pinned 2026-08-17, "correct angVel update in WAIKO and Valinor"
+  # e7197fa fixes MCWaiko/MCValinor publishing floating-base angular velocity
+  # from worldFbKine_ (raw odometry kinematics) instead of
+  # estimatedWorldFbKine_ (the actual filtered estimate) -- directly the
+  # base_ang_vel the RL policy reads. Self-contained: still includes
+  # waiko-humanoid.hpp, the same state-observation API as our current pin
+  # below, so no state-observation update needed. Verified: builds clean
+  # against the pinned state-observation with no missing symbols.
+  #
+  # state-observation's own master has since replaced waiko-humanoid.hpp with
+  # waiko.hpp/viking.hpp (a real API break) -- do not casually advance that
+  # pin to origin/master, it is not just "newer", mc_state_observation's main
+  # has not moved onto it yet either.
   # See the SKIP_TEST note on state-observation above.
   SKIP_TEST
   CMAKE_ARGS ${MC_STATE_OBSERVATION_OPTIONS}
