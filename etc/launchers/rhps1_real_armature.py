@@ -53,7 +53,7 @@ for _s in ("L", "R"):
       f"{_s}_ELBOW_P": 40, f"{_s}_ELBOW_Y": 40,
       f"{_s}_WRIST_R": 30, f"{_s}_WRIST_Y": 30,
       f"{_s}_CROTCH_Y": 35, f"{_s}_CROTCH_R": 100, f"{_s}_CROTCH_P": 140,
-      f"{_s}_KNEE_P": 70, f"{_s}_ANKLE_R": 45, f"{_s}_ANKLE_P": 65,
+      f"{_s}_KNEE_P": 100, f"{_s}_ANKLE_R": 45, f"{_s}_ANKLE_P": 65,
   })
 
 
