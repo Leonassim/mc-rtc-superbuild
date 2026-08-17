@@ -11,7 +11,7 @@
 # (the controller filters refJointOrder itself), and Timestep 0.005 is imposed by
 # RobotHardware.conf and hard-checked by mc_openrtm. Simulation needs the other
 # answer to both -- RHPS1_MuJoCo, which lists the 30 driven joints directly and
-# is the only branch mc_mujoco has a model for, and 1 kHz. Forgetting the overlay
+# is the only branch mc_mujoco has a model for, and the robot's 0.005 timestep. Forgetting the overlay
 # used to cost only the wrong robot; since the Timestep split it also silently
 # runs the simulation at 200 Hz, which is a different plant (1 QP tick per policy
 # step instead of 5).
@@ -48,5 +48,5 @@ if ! "@CMAKE_INSTALL_PREFIX@/libexec/launchers/rhps1_real_armature.py" \
   exit 1
 fi
 
-echo "mc_mujoco: simulation config (RHPS1_MuJoCo, Timestep 0.001)" >&2
+echo "mc_mujoco: simulation config (RHPS1_MuJoCo, Timestep 0.005)" >&2
 exec "$REAL" "$@"

@@ -21,12 +21,21 @@
 # the RHPS1_MuJoCo branch of the module lists the 30 driven joints directly.
 MainRobot: RHPS1_MuJoCo
 
-# Timestep: the base file carries the real robot's 0.005 (imposed by
-# RobotHardware.conf and hard-checked by mc_openrtm). Simulation is not bound
-# by that and runs the control loop at 1kHz.
-Timestep: 0.001
+# Timestep: the SAME 0.005 as the real robot (imposed there by RobotHardware.conf
+# and hard-checked by mc_openrtm). Simulation is not bound by it, and used to run
+# at 1 kHz -- that was the whole problem. mjlab trains at 200 Hz too (sim dt
+# 0.0025, decimation 2), so 1 kHz made mc_mujoco the only one of the three at a
+# different control rate, and it hid on this machine everything that then showed
+# up on hardware.
+#
+# Physics stays at 1 kHz: mc_mujoco computes frameskip = round(mc_rtc timestep /
+# XML timestep) = 5 and interpolates the reference across the window
+# (mj_sim.cpp:671, 814), so the servo still runs at 1 kHz and kd*dt stays 0.4.
+# Only the control loop slows to the rate the robot and training both use.
+Timestep: 0.005
 
-# Simulation keeps the value the old formula produced at 1 kHz. Not retuned:
-# 1600 was measured on the robot at 200 Hz and has not been tried here, and
-# changing both at once would remove the reference point.
-posture_stiffness: 40000
+# Follows the Timestep: at 5 ms, sqrt(K)*dt <= 0.2 caps K at 1600, so 40000 is
+# not merely untested here any more, it is past the discrete-stability margin.
+# 1600 is also the robot's value, which is the point -- the two plants now match
+# instead of differing by a factor 25.
+posture_stiffness: 1600
