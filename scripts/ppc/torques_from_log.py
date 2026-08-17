@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""Couples articulaires a partir d'un log mc_rtc, pour les joints a moteur unique.
+"""Joint torques from an mc_rtc log, for single-motor joints.
 
-Ce que contient reellement le log
----------------------------------
-`tauIn_*` est ce que RobotHardware publie depuis `state.torque` de l'IOB. Sur
-RHPS1 ce n'est PAS un couple : le VRML donne gearRatio = 1 et torqueConst = 1
-sur les 62 joints, donc la valeur vaut
+What the log actually holds
+---------------------------
+`tauIn_*` is what RobotHardware publishes from the IOB's `state.torque`. On
+RHPS1 this is NOT a torque: the VRML gives gearRatio = 1 and torqueConst = 1 on
+all 62 joints, so the value is
 
-    ratedCurrent * (0x6077 / 1000)   =   un COURANT en amperes.
+    ratedCurrent * (0x6077 / 1000)   =   a CURRENT in amperes.
 
-Ce script le convertit en N.m avec tau = I * N * Kt.
+This converts it to N.m with tau = I * N * Kt.
 
-Ce qui est converti, et ce qui ne l'est pas
--------------------------------------------
-Seuls les six joints `solo` (un moteur, entrainement direct) ont un N et un Kt
-par articulation, tires de joint_torque_limits_rotate.csv. Les paires
-differentielles (epaule R/Y, coude P/Y, poignet P/Y, chest, head) ont bien un N
-mais aucun Kt par joint, et les articulations a verins (crotch P/R, ankle P/R)
-n'y figurent pas du tout : leur bras de levier depend de l'angle, la conversion
-demande CylinderToAngle. Les unes comme les autres sont ignorees ici.
+What is converted, and what is not
+----------------------------------
+Only the six `solo` joints (one motor, direct drive) have a per-joint N and Kt,
+taken from joint_torque_limits_rotate.csv. The differential pairs (shoulder R/Y,
+elbow P/Y, wrist P/Y, chest, head) have an N but no per-joint Kt, and the
+cylinder-driven joints (crotch P/R, ankle P/R) are absent entirely -- their lever
+arm depends on the angle and the conversion needs CylinderToAngle. Both are
+skipped here.
 
-Usage :  python3 torques_from_log.py /chemin/vers/mc-control-...bin
-Lecture seule.
+Usage:  python3 torques_from_log.py /path/to/mc-control-...bin
+Read only.
 """
 
 import sys
@@ -31,10 +31,10 @@ import numpy as np
 try:
   from mc_log_ui import read_log
 except ImportError:
-  sys.exit("mc_log_ui introuvable. Lancer dans un shell ou setup_mc_rtc.sh est source.")
+  sys.exit("mc_log_ui not found. Run in a shell where setup_mc_rtc.sh is sourced.")
 
-# refJointOrder du module RHPS1 (branche non-mujoco), qui est aussi l'ordre de
-# tauIn. Les deux mains sont dedans : elles decalent tout ce qui suit.
+# RHPS1 module refJointOrder (non-mujoco branch), which is also the order of
+# tauIn. Both hands are in it: they shift everything that follows.
 RJO = [
   "L_CROTCH_Y", "L_CROTCH_R", "L_CROTCH_P", "L_KNEE_P", "L_ANKLE_R", "L_ANKLE_P",
   "CHEST_Y", "CHEST_P",
@@ -74,7 +74,7 @@ def main():
   elif "tauIn_0" in log:
     prefix, order = "tauIn", RJO
   else:
-    sys.exit("ni joint_current_A ni tauIn dans ce log : RobotHardware n'etait pas\n"
+    sys.exit("neither joint_current_A nor tauIn in this log: RobotHardware was not\n"
              "connecte, ou le log date d'avant le calcul de state.torque.")
 
   n = len(log["t"])

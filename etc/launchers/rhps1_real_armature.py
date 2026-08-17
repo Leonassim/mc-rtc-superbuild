@@ -1,31 +1,26 @@
 #!/usr/bin/env python3
-"""Donne a mc_mujoco les armatures reelles du RHPS1, sans toucher au modele.
+"""Give mc_mujoco the RHPS1's real armatures without touching the model.
 
-Le XML de `rhps1_mj_description` declare `armature="1"` dans son bloc `<default>`,
-donc sur les 30 articulations pilotees. Le vrai genou vaut 0.10672 : un facteur
-dix sur l'inertie rotor, dans le sens qui trompe, puisqu'une armature trop grande
-amortit et stabilise. mc_mujoco simule donc un robot nettement plus indulgent que
-le vrai, et plus indulgent aussi que le modele sur lequel la politique s'entraine
-depuis le 2026-08-07.
+rhps1_mj_description declares armature="1" in its <default> block, so on all 30
+driven joints. The real knee is 0.10672 -- a factor of ten on rotor inertia, in
+the misleading direction, since too much armature damps and stabilises. Without
+this, mc_mujoco simulates a robot more forgiving than both the real one and the
+one the policy trains against.
 
-Ce script ne modifie ni le depot de description ni l'arbre d'installation. Il
-ecrit deux fichiers derives dans le dossier de configuration utilisateur de
-mc_mujoco, que `MjSimImpl` consulte AVANT la version installee
-(`mj_sim.cpp`, get_robot_cfg_path) :
+Writes two derived files into mc_mujoco's user config directory, which MjSimImpl
+reads BEFORE the installed version (mj_sim.cpp, get_robot_cfg_path):
 
-  <user>/RHPS1main_real_armature.xml   le modele, armature par articulation
-  <user>/rhps1.yaml                    pointe xmlModelPath dessus
+  <user>/RHPS1main_real_armature.xml   the model, armature per joint
+  <user>/rhps1.yaml                    points xmlModelPath at it
 
-`meshdir` est reecrit en chemin absolu, sinon le XML derive ne retrouverait pas
-les maillages depuis son nouveau dossier.
+meshdir is rewritten absolute, or the derived XML would not find the meshes from
+its new directory. Regenerated on every launch by the mc_mujoco shim.
 
-Regenere a chaque lancement par le shim mc_mujoco, donc jamais perime.
-
-Valeurs : document de calibration RHPS1_gains, armature = n_channels * JM * N^2,
-JM verifie contre la fiche SANMOTION. Les huit articulations a verins (hanche et
-cheville, roulis et tangage) gardent 1.0 -- convertir leur effort cote verin en
-inertie cote articulation demande la geometrie des points d'attache, absente des
-depots. Meme decoupage que cote entrainement.
+Values from the RHPS1_gains calibration document, armature = n_channels * JM *
+N^2, JM checked against the SANMOTION datasheet. The eight cylinder-driven
+joints (hip and ankle, roll and pitch) stay at 1.0: converting their
+cylinder-side effort into joint-side inertia needs attachment geometry that is
+in neither repository. Same split as on the training side.
 """
 
 import os
@@ -51,35 +46,23 @@ CYLINDER = {"L_CROTCH_P", "R_CROTCH_P", "L_CROTCH_R", "R_CROTCH_R",
 
 
 def main() -> int:
-  # RHPS1_ARMATURE_ONLY restreint quelles articulations recoivent leur vraie
-  # armature ; toutes les autres restent au placeholder 1.0 du XML. Sert a
-  # bisecter un probleme observe apres cette correction sans avoir a editer le
-  # script : par exemple RHPS1_ARMATURE_ONLY="CROTCH|KNEE|ANKLE" ne corrige que
-  # les jambes, RHPS1_ARMATURE_ONLY="" (une regex qui ne matche rien) revient au
-  # comportement d'avant ce script pour tout comparer d'un coup.
-  # DESACTIVE PAR DEFAUT depuis le 2026-08-10. Les vraies armatures rendent le
-  # modele numeriquement instable avec les gains PD actuels, et ce n'est pas une
-  # question de reglage fin : mesure sur un systeme a 1 DDL reproduisant le
-  # poignet (I_segment 0.0033, armature 0.01485, kp 14000, kd 240), le critere
-  # d'integration explicite kd*dt/M vaut 13 pour un seuil de 2. Sans ecretage
-  # (mc_mujoco : forcelimited="false") l'articulation part a 2420 rad ; avec
-  # ecretage (mjlab, effort_limit) elle bourdonne a 1-2 degres en restant collee
-  # a sa limite de couple -- ce que confirme torque_limit_ratio_max = 1.0000 sur
-  # tout le run d'entrainement 2026-08-07_15-40-43.
+  # DISABLED BY DEFAULT. The real armatures make the model numerically unstable
+  # with the current PD gains, and it is not a matter of fine tuning: measured on
+  # a 1-DoF system reproducing the wrist (I 0.0033, armature 0.01485, kp 14000,
+  # kd 240), the explicit-integration criterion kd*dt/M is 13 against a threshold
+  # of 2. Unclamped the joint runs to 2420 rad; clamped it buzzes at 1-2 degrees
+  # pinned to its torque limit. implicitfast changes nothing -- MuJoCo cannot
+  # implicitly integrate a torque supplied through ctrl.
   #
-  # implicitfast n'y change RIEN, verifie : chiffres identiques a Euler a la
-  # virgule pres. MuJoCo ne peut pas integrer implicitement un couple fourni via
-  # ctrl, il ignore qu'il depend de la vitesse.
+  # The 20000/400 gains were tuned WITH armature=1.0 and are not separable from
+  # it. Using the real values requires retuning kp and kd per joint, hence
+  # redoing action_scale (= effort_limit/kp).
   #
-  # Les gains 20000/400 ont ete regles AVEC armature=1.0 ; ils emulent un servo
-  # de position raide et ne sont pas separables de cette inertie. Utiliser les
-  # vraies armatures demande de retuner kp et kd par articulation pour preserver
-  # la reponse en boucle fermee -- et donc de refaire action_scale, qui vaut
-  # effort_limit/kp. C'est un chantier, pas un reglage.
-  #
-  # RHPS1_REAL_ARMATURE=1 reactive la surcharge pour experimenter.
+  # RHPS1_REAL_ARMATURE=1 re-enables the override; RHPS1_ARMATURE_ONLY is a regex
+  # restricting which joints receive it, to bisect a problem without editing this
+  # script.
   if not os.environ.get("RHPS1_REAL_ARMATURE"):
-    only_re = re.compile("$^")  # ne matche rien
+    only_re = re.compile("$^")  # matches nothing
   else:
     only = os.environ.get("RHPS1_ARMATURE_ONLY")
     only_re = re.compile(only) if only is not None else None
@@ -101,19 +84,14 @@ def main() -> int:
   # meshdir absolu : le XML derive vit ailleurs que l'original.
   xml, n = re.subn(r'meshdir="[^"]*"', f'meshdir="{meshes}"', xml, count=1)
   if n != 1:
-    print("rhps1_real_armature: meshdir introuvable dans le XML", file=sys.stderr)
+    print("rhps1_real_armature: meshdir not found in the XML", file=sys.stderr)
     return 1
 
-  # RHPS1_INTEGRATOR : le <option> du XML ne specifie aucun integrateur, donc
-  # mc_mujoco tourne en Euler (verifie : m.opt.integrator == 0) alors que mjlab
-  # tourne en implicitfast (mjINT_IMPLICITFAST == 3). C'est la seule
-  # difference structurelle entre les deux simulateurs, les deux calculant leur
-  # PD a l'exterieur et l'appliquant comme couple sur un actionneur `motor`.
-  #
-  # Euler integre explicitement les forces dependant de la vitesse. Diviser une
-  # inertie par dix sans toucher au kd rapproche donc la boucle de sa limite de
-  # stabilite, et c'est le premier suspect de la vibration apparue avec les
-  # vraies armatures. A tester avec RHPS1_INTEGRATOR=implicitfast.
+  # RHPS1_INTEGRATOR: the XML <option> specifies no integrator, so MuJoCo uses
+  # Euler while mjlab trains under implicitfast -- a structural difference
+  # between the two simulators. Dividing inertia by ten without touching kd moves
+  # the loop closer to its stability limit, which is the first suspect for the
+  # vibration seen with the real armatures.
   integrator = os.environ.get("RHPS1_INTEGRATOR")
   if integrator:
     m = re.search(r"<option\b[^>]*>", xml)
@@ -157,22 +135,20 @@ def main() -> int:
   out_xml = user / "RHPS1main_real_armature.xml"
   out_xml.write_text(xml)
 
-  # Ce fichier masque l'installe EN ENTIER (mj_sim.cpp, get_robot_cfg_path prend
-  # le premier trouve, il ne fusionne pas). On repart donc du contenu installe et
-  # on ne remplace que le xmlModelPath de premier niveau -- celui du robot
-  # principal. Le reecrire de zero ferait disparaitre les sections des variantes
-  # RHPS1_sake2_sake2_MuJoCo et RHPS1_leap_leap_MuJoCo, qui cesseraient de
-  # trouver leur modele sans que rien ne le signale.
+  # mc_mujoco reads the FIRST rhps1.yaml it finds, it does not merge. So start
+  # from the installed content and rewrite only the top-level xmlModelPath,
+  # preserving the other entries (RHPS1_sake2 and RHPS1_leap variants), which
+  # would otherwise silently stop finding their model.
   cfg = (share / "rhps1.yaml").read_text()
   cfg, n = re.subn(r'^xmlModelPath:.*$', f'xmlModelPath: "{out_xml}"', cfg,
                    count=1, flags=re.M)
   if n != 1:
-    print("rhps1_real_armature: xmlModelPath de premier niveau introuvable dans "
+    print("rhps1_real_armature: top-level xmlModelPath not found in "
           f"{share / 'rhps1.yaml'}", file=sys.stderr)
     return 1
   (user / "rhps1.yaml").write_text(
-    "# Genere a chaque lancement par le shim mc_mujoco. Ne pas editer.\n"
-    "# Copie de la version installee, avec le seul xmlModelPath principal\n"
+    "# Generated on every launch by the mc_mujoco shim. Do not edit.\n"
+    "# Copy of the installed version, with only the main xmlModelPath\n"
     "# redirige vers le modele a armatures reelles.\n" + cfg)
   print(f"mc_mujoco: armatures reelles sur {len(applied)}/{len(ARMATURE)} "
         f"articulations, {len(CYLINDER)} a verins laissees a 1.0")
