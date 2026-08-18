@@ -1,18 +1,10 @@
 name: CI Ubuntu Jammy
 
+# Fork: disabled. Only Ubuntu Noble is exercised here -- this fork targets one
+# robot PC. Trigger reduced to workflow_dispatch rather than deleting the file,
+# so merging upstream does not conflict and re-enabling is one line.
 on:
-  repository_dispatch:
-    types:
-    - build-jammy
-  push:
-    branches:
-      - 'main'
-  pull_request:
-    branches:
-      - '**'
-  schedule:
-    # Run on Sunday, Tuesday and Thursday nights
-    - cron: '0 22 * * 0,1,4'
+  workflow_dispatch:
 
 # cancel running workflows when pushing to the same branch/pr
 concurrency:

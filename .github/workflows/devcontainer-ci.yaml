@@ -3,7 +3,6 @@ name: Package Devcontainers Reusable
 on:
   repository_dispatch:
     types:
-      - build-jammy
       - build-noble
   push:
     branches:
@@ -22,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [jammy, noble]
+        os: [noble]  # fork: noble only
     uses: jrl-umi3218/github-actions/.github/workflows/superbuild-devcontainer.yml@master
     with:
       runner: ubuntu-24.04
