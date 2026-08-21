@@ -47,15 +47,21 @@ RJO = [
 ]
 
 # joint -> (N, Kt, courant continu A, courant pic A, duree pic s)
-# joint_torque_limits_rotate.csv, lignes type=solo. Valeurs remappees le
-# 2026-08-03 apres correction du bug d'association Drive<->joint.
+# joint_torque_limits_rotate.csv, lignes type=solo, synchronise avec
+# Leonassim/RHPS1_gains le 2026-08-21. Les Kt precedents (0.0582 / 0.101 /
+# 0.047) etaient faux : les valeurs plaque sont 0.116 / 0.424 / 0.246, soit
+# 2.0x, 4.2x et 5.2x. Le facteur n'est pas commun aux trois, donc rien ne
+# pouvait etre corrige par une regle generale.
+#
+# Ne pas modifier a la main : scripts/ppc/apply_kt.py ecrit les quatre fichiers
+# qui portent ces constantes d'un seul coup.
 SOLO = {
-  "L_CROTCH_Y":   (159.0907, 0.0582, 0.71, 2.05, 12.91),
-  "R_CROTCH_Y":   (159.0907, 0.0582, 0.71, 2.05, 12.91),
-  "L_KNEE_P":     (210.0,    0.1010, 1.03, 2.03, 23.53),
-  "R_KNEE_P":     (210.0,    0.1010, 1.03, 2.03, 23.53),
-  "L_SHOULDER_P": (200.0,    0.0470, 0.88, 1.68, 24.63),
-  "R_SHOULDER_P": (200.0,    0.0470, 0.88, 1.68, 24.63),
+  "L_CROTCH_Y":   (159.0907, 0.1160, 0.71, 2.05, 12.91),
+  "R_CROTCH_Y":   (159.0907, 0.1160, 0.71, 2.05, 12.91),
+  "L_KNEE_P":     (210.0,    0.4240, 1.03, 2.03, 23.53),
+  "R_KNEE_P":     (210.0,    0.4240, 1.03, 2.03, 23.53),
+  "L_SHOULDER_P": (200.0,    0.2460, 0.88, 1.68, 24.63),
+  "R_SHOULDER_P": (200.0,    0.2460, 0.88, 1.68, 24.63),
 }
 
 
