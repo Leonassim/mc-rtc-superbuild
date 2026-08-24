@@ -50,8 +50,27 @@ Timestep: 0.005
 # and the margin slips to 0.447, past what it targets. 1600 restores 0.20.
 # That makes it a well-motivated hypothesis -- nothing has ever walked on it.
 #
-# Inert today: every block in NewRLQPController.yaml declares 8000 explicitly,
-# the value it has actually been running at, so un-shadowing the key changed no
-# behaviour anywhere. Kept here as the documented intent for when 1600 is
-# tested deliberately, which is now possible for the first time.
+# MEASURED 2026-08-24, the first time the key worked. One mc_mujoco session,
+# policy 0, walking, 8000 then 1600 with a disarm between:
+#
+#                        K=8000   K=1600
+#   lag q_rl->qIn (ms)     52.5     59.7    +14%   (normalised by qd*)
+#   q_rl - qOut (mrad)      9.47    12.50   +32%   the QP stage
+#   qOut - qIn  (mrad)      1.12     1.13    +1%   the servo, untouched
+#   |tau| max (N.m)        99.3    115.6    +16%
+#
+# 1600 is worse on every axis that matters and buys nothing. Keep 8000, which
+# is what every block already declares.
+#
+# The interesting part is the size of the change, not its sign. Dividing K by 5
+# should move the task's own 1/sqrt(K) lag from 11 to 25 ms, i.e. +26% of a
+# 52 ms total; it moved +14%. So most of those 52 ms are NOT the stiffness --
+# they are the QP's constraint set and the whole-body dynamics, which no gain
+# recovers. The 2026-08-17 note in NewRLQPController.yaml made exactly this
+# objection (a coupled QP is not a decoupled per-joint oscillator) and it turns
+# out to be the right one: sqrt(K)*dt = 0.447 is evidently stable here, and the
+# margin argument was about numerical stability, not about tracking.
+#
+# The lever left is not on this side. If the lag cannot be removed, train
+# against it -- FiniteDifferencePdActuator's posture filter, Task B of the plan.
 posture_stiffness: 1600
