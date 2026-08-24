@@ -10,6 +10,6 @@ AddProject(rl_controller
   # Adding a policy index needs BOTH a yaml entry and a case in the
   # switch(currentPolicyIndex) that builds the observation. Missing the switch
   # case is silent until runtime, where it reads "Wrote 0 expects 246".
-  GIT_TAG d98baab # pinned 2026-08-24, policy 0 back to its hardware config (feedforward off)
+  GIT_TAG 8794502 # pinned 2026-08-24, index 3 = policy 0 under the deployment-fidelity plant
   DEPENDS mc_rtc mc_joystick_plugin
 )
