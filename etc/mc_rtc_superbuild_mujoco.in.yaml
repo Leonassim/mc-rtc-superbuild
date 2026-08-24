@@ -34,8 +34,24 @@ MainRobot: RHPS1_MuJoCo
 # Only the control loop slows to the rate the robot and training both use.
 Timestep: 0.005
 
-# Follows the Timestep: at 5 ms, sqrt(K)*dt <= 0.2 caps K at 1600, so 40000 is
-# not merely untested here any more, it is past the discrete-stability margin.
-# 1600 is also the robot's value, which is the point -- the two plants now match
-# instead of differing by a factor 25.
+# posture_stiffness. Read this before trusting the number.
+#
+# Until 2026-08-24 this key did nothing at all: a non-const postureStiffness()
+# overload in NewRLQPController shadowed the config-reading one and won every
+# call, so the task always ran the bare formula 0.2/(policyDt*Timestep) -- 8000
+# at 5 ms, 40000 back when this file said 1 kHz. Here AND on the robot. So
+# "1600 is also the robot's value", which this comment used to say, was never
+# true: both plants ran 8000, matching each other while matching neither this
+# file. Fixed in rl_controller 2513f93.
+#
+# The argument for 1600 is unchanged and still sound: the formula scales K as
+# 1/dt, but holding the discrete-stability margin sqrt(K)*dt fixed needs 1/dt^2.
+# At 1 ms the two coincide (40000, margin 0.20); at 5 ms the formula gives 8000
+# and the margin slips to 0.447, past what it targets. 1600 restores 0.20.
+# That makes it a well-motivated hypothesis -- nothing has ever walked on it.
+#
+# Inert today: every block in NewRLQPController.yaml declares 8000 explicitly,
+# the value it has actually been running at, so un-shadowing the key changed no
+# behaviour anywhere. Kept here as the documented intent for when 1600 is
+# tested deliberately, which is now possible for the first time.
 posture_stiffness: 1600
