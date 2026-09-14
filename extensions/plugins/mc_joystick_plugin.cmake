@@ -1,5 +1,11 @@
 AddProject(mc_joystick_plugin
-  GITHUB bastien-muraccioli/mc_joystick_plugin
-  GIT_TAG 2a9dfb2ae58c3013a182c3c9807bf3c9a46da84f # pinned 2026-07-22, was origin/main
+  # Fork de Leo, le temps du correctif de reset : MCGlobalController::reset()
+  # reconstruit le controleur puis appelle plugin->reset() et jamais
+  # plugin->init(), donc tout ce qu'init() enregistrait disparaissait et
+  # before() levait sur "Joystick::connected", ce qui tuait mc_mujoco manette
+  # branchee. Revenir a bastien-muraccioli/mc_joystick_plugin quand le
+  # correctif y sera remonte.
+  GITHUB Leonassim/mc_joystick_plugin
+  GIT_TAG 206783b # pinned 2026-09-14, branche fix/reset-simulation-crash
   DEPENDS mc_rtc
 )
