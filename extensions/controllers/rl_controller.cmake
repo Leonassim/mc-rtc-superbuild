@@ -12,6 +12,6 @@ AddProject(rl_controller
   # Adding a policy index needs BOTH a yaml entry and a case in the
   # switch(currentPolicyIndex) that builds the observation. Missing the switch
   # case is silent until runtime, where it reads "Wrote 0 expects 246".
-  GIT_TAG d24384c # pinned 2026-10-26, slot 12 = slot 11 + torsion mode, no standing vibration; robot policy is index 3
+  GIT_TAG 1a066d6 # pinned 2026-10-26, slot 12 = human style, slot 13 = slot 3, both without the standing torsion vibration; robot policy is index 3
   DEPENDS mc_rtc mc_joystick_plugin
 )
