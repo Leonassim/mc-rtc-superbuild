@@ -11,11 +11,17 @@
 # nothing needing the symbols yet, so -lboost_filesystem there is a silent
 # no-op. CMAKE_CXX_STANDARD_LIBRARIES is appended at the very end, which
 # actually resolves them. Verified in a fresh container.
+#
+# patches/mc_mujoco_rhps1.patch: no scene update without visualization, and the
+# RHPS1 low-level drive model (MC_MUJOCO_RHPS1_DRIVE=1, off by default), the same
+# as mjlab's RHPS1_DRIVE=cyl. Applied once; a source that already has it is left alone.
+set(MC_MUJOCO_RHPS1_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/mc_mujoco_rhps1.patch)
 AddProject(mc_mujoco
   GITHUB mathieu-celerier/mc_mujoco
   GIT_TAG 8934988254b8a297f6eaadb02a94be63671b4d11 # pinned 2026-07-22, was origin/main
   DEPENDS mc_rtc
   CMAKE_ARGS -DCMAKE_CXX_STANDARD_LIBRARIES=-lboost_filesystem
+  PATCH_COMMAND sh -c "git apply --reverse --check ${MC_MUJOCO_RHPS1_PATCH} 2>/dev/null || git apply ${MC_MUJOCO_RHPS1_PATCH}"
   # X11 headers required by vendored glfw
   APT_DEPENDENCIES libxinerama-dev libxrandr-dev libxcursor-dev libxi-dev
 )

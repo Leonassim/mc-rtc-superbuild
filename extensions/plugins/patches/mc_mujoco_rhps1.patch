@@ -1,0 +1,454 @@
+diff --git a/src/mj_sim.cpp b/src/mj_sim.cpp
+index d23ea97..79e406d 100644
+--- a/src/mj_sim.cpp
++++ b/src/mj_sim.cpp
+@@ -373,6 +373,15 @@ void MjRobot::initialize(mjModel * model, const mc_rbdyn::Robot & robot)
+     init_sensor_id("accelerometer sensor", "body sensor", bs.name(), "accelerometer", mjSENS_ACCELEROMETER,
+                    mc_bs_to_mj_accelerometer_id);
+   }
++  if(Rhps1Drive::enabled())
++  {
++    auto drive = std::make_shared<Rhps1Drive>();
++    if(drive->init(model, mj_jnt_ids))
++    {
++      rhps1_drive = drive;
++      mc_rtc::log::info("[mc_mujoco] {}: RHPS1 drive model on hip/ankle cylinders and hip yaw", name);
++    }
++  }
+   reset(robot);
+ }
+ 
+@@ -437,6 +446,10 @@ void MjRobot::reset(const mc_rbdyn::Robot & robot)
+     }
+   }
+   mj_ctrl = std::vector<double>(mj_prev_ctrl_q.size(), 0.0);
++  if(rhps1_drive)
++  {
++    rhps1_drive->fresh = true;
++  }
+   mj_next_ctrl_q = mj_prev_ctrl_q;
+   mj_next_ctrl_alpha = mj_prev_ctrl_alpha;
+   mj_next_ctrl_jointTorque = mj_prev_ctrl_jointTorque;
+@@ -698,6 +711,24 @@ void MjRobot::updateSensors(mc_control::MCGlobalController * gc, mjModel * model
+     encoders[mj_jnt_to_rjo[i]] = data->qpos[model->jnt_qposadr[mj_jnt_ids[i]]];
+     alphas[mj_jnt_to_rjo[i]] = data->qvel[model->jnt_dofadr[mj_jnt_ids[i]]];
+   }
++  if(rhps1_drive)
++  {
++    // The encoders sit on the motor side.
++    for(const auto & p : rhps1_drive->pairs)
++    {
++      for(int k = 0; k < 2; ++k)
++      {
++        auto rjo = mj_jnt_to_rjo[p.idx[k]];
++        encoders[rjo] = p.qm[k];
++        alphas[rjo] = p.v[k];
++      }
++    }
++    for(const auto & sp : rhps1_drive->springs)
++    {
++      encoders[mj_jnt_to_rjo[sp.idx]] = sp.qm;
++      alphas[mj_jnt_to_rjo[sp.idx]] = sp.v;
++    }
++  }
+   for(size_t i = 0; i < mj_mot_ids.size(); ++i)
+   {
+     if(mj_jnt_to_rjo[i] == -1)
+@@ -800,6 +831,30 @@ void MjRobot::sendControl(const mjModel & model,
+                           size_t frameskip_,
+                           bool torque_control)
+ {
++  std::vector<double> drive_tau;
++  if(rhps1_drive && !torque_control)
++  {
++    size_t n = mj_ctrl.size();
++    std::vector<double> q(n, 0.0), qd(n, 0.0), q_ref(n, 0.0), qd_ref(n, 0.0);
++    for(size_t i = 0; i < n; ++i)
++    {
++      q[i] = data.qpos[model.jnt_qposadr[mj_jnt_ids[i]]];
++      qd[i] = data.qvel[model.jnt_dofadr[mj_jnt_ids[i]]];
++      q_ref[i] = mj_prev_ctrl_q[i] + (interp_idx + 1) * (mj_next_ctrl_q[i] - mj_prev_ctrl_q[i]) / frameskip_;
++      qd_ref[i] = mj_prev_ctrl_alpha[i] + (interp_idx + 1) * (mj_next_ctrl_alpha[i] - mj_prev_ctrl_alpha[i]) / frameskip_;
++    }
++    rhps1_drive->step(q, qd, q_ref, qd_ref, model.opt.timestep);
++    drive_tau.assign(n, std::nan(""));
++    for(const auto & p : rhps1_drive->pairs)
++    {
++      drive_tau[p.idx[0]] = p.tau[0];
++      drive_tau[p.idx[1]] = p.tau[1];
++    }
++    for(const auto & sp : rhps1_drive->springs)
++    {
++      drive_tau[sp.idx] = sp.tau;
++    }
++  }
+   for(size_t i = 0; i < mj_ctrl.size(); ++i)
+   {
+     auto mot_id = mj_mot_ids[i];
+@@ -825,6 +880,10 @@ void MjRobot::sendControl(const mjModel & model,
+       {
+         mj_ctrl[i] = torque_ref;
+       }
++      else if(!drive_tau.empty() && !std::isnan(drive_tau[i]))
++      {
++        mj_ctrl[i] = drive_tau[i];
++      }
+       else
+       {
+         mj_ctrl[i] = PD(rjo_id, q_ref, encoders[rjo_id], alpha_ref, alphas[rjo_id]);
+@@ -966,6 +1025,17 @@ bool MjSimImpl::stepSimulation()
+ 
+ void MjSimImpl::updateScene()
+ {
++  // Sans visualisation il n'y a ni camera ni scene : mjv_defaultCamera et
++  // mjv_makeScene sont dans le bloc `if(config.with_visualization)` de
++  // l'initialisation (l.281). render() teste bien ce drapeau, pas celui-ci --
++  // d'ou "Pre-allocated visual geom buffer is full" puis l'erreur fatale
++  // "mjv_cameraFrame: unknown camera type" des le premier pas en mode
++  // --without-visualization.
++  if(!config.with_visualization)
++  {
++    return;
++  }
++
+   // update scene and render
+   std::lock_guard<std::mutex> lock(rendering_mutex_);
+   mjv_updateScene(model, data, &options, &pert, &camera, mjCAT_ALL, &scene);
+diff --git a/src/mj_sim_impl.h b/src/mj_sim_impl.h
+index 6e6d2d0..dbb3666 100644
+--- a/src/mj_sim_impl.h
++++ b/src/mj_sim_impl.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include "mj_sim.h"
++#include "rhps1_drive.h"
+ 
+ #include "MujocoClient.h"
+ 
+@@ -104,6 +105,8 @@ struct MjRobot
+   std::vector<double> kp = {};
+   /** Derivative gains for low-level PD control (used in PD loop) */
+   std::vector<double> kd = {};
++  /** RHPS1 drive model (MC_MUJOCO_RHPS1_DRIVE=1), replaces the PD on the joints it owns */
++  std::shared_ptr<Rhps1Drive> rhps1_drive;
+ 
+   /** Names of the motors inside MuJoCo corresponding to the joints in \ref mj_jnt_names the name is empty if the joint
+    * has no motor actuation in MuJoCo */
+diff --git a/src/rhps1_drive.h b/src/rhps1_drive.h
+new file mode 100644
+index 0000000..3f58326
+--- /dev/null
++++ b/src/rhps1_drive.h
+@@ -0,0 +1,311 @@
++#pragma once
++
++// RHPS1 low-level drives, as in mjlab (rhps1_cylinders.CylinderDrive), enabled with
++// MC_MUJOCO_RHPS1_DRIVE=1. Hip and ankle roll/pitch: the two cylinder drives of each
++// pair (target angles -> lengths with hrpsys' closed form, per motor P + series PI
++// with its own integral and current limit, J^T F back), massless motors, the link on
++// the motor side through a hidden spring. Hip yaw: hidden spring behind a lagged
++// motor. Encoders report the motor side, as on the robot.
++
++#include <mujoco/mujoco.h>
++
++#include <array>
++#include <cmath>
++#include <cstdlib>
++#include <string>
++#include <vector>
++
++namespace mc_mujoco
++{
++
++struct Rhps1Drive
++{
++  struct Pair
++  {
++    int idx[2]; // index in MjRobot::mj_jnt_ids, [P, R]
++    bool ankle;
++    double offR[3];
++    double p0[2][3], p2[2][3], p3[2][3];
++    double C, kp, wi, fmax;
++    double ks[2], cs[2];
++    double qm[2] = {0, 0}, v[2] = {0, 0}, integral[2] = {0, 0};
++    double tau[2] = {0, 0};
++  };
++  struct Spring
++  {
++    int idx;
++    double k, c, lag_hz;
++    double qm = 0, v = 0, tau = 0;
++  };
++  std::vector<Pair> pairs;
++  std::vector<Spring> springs;
++  bool fresh = true;
++
++  static double env(const char * name, double def)
++  {
++    const char * v = std::getenv(name);
++    return v ? std::atof(v) : def;
++  }
++
++  static bool enabled()
++  {
++    const char * v = std::getenv("MC_MUJOCO_RHPS1_DRIVE");
++    return v && std::string(v) == "1";
++  }
++
++  // names: MuJoCo joint name of each entry of mj_jnt_ids
++  bool init(const mjModel * m, const std::vector<int> & jnt_ids)
++  {
++    auto find = [&](const std::string & suffix) {
++      for(size_t i = 0; i < jnt_ids.size(); ++i)
++      {
++        std::string n = mj_id2name(m, mjOBJ_JOINT, jnt_ids[i]);
++        if(n.size() >= suffix.size() && n.compare(n.size() - suffix.size(), suffix.size(), suffix) == 0)
++        {
++          return static_cast<int>(i);
++        }
++      }
++      return -1;
++    };
++    const double counts_per_m = 42598.4e3;
++    const double motor_rad_per_m = 2.0 * M_PI * counts_per_m / 65536.0;
++    const double scale = env("MC_MUJOCO_RHPS1_DRIVE_SCALE", 0.53);
++    for(std::string j : {"CROTCH", "ANKLE"})
++    {
++      for(std::string s : {"L", "R"})
++      {
++        Pair p;
++        p.idx[0] = find(s + "_" + j + "_P");
++        p.idx[1] = find(s + "_" + j + "_R");
++        if(p.idx[0] < 0 || p.idx[1] < 0)
++        {
++          return false;
++        }
++        p.ankle = j == "ANKLE";
++        int rb = m->jnt_bodyid[jnt_ids[p.idx[1]]];
++        for(int k = 0; k < 3; ++k)
++        {
++          p.offR[k] = m->body_pos[3 * rb + k];
++        }
++        // RHPS1.in.conf parallel_cylinder_points: pos0, pos2, pos3 (inner, outer)
++        double ys = (s == "R" ? 1.0 : -1.0);
++        if(p.ankle)
++        {
++          for(int c = 0; c < 2; ++c)
++          {
++            double y = (c == 0 ? 0.029 : -0.029) * ys;
++            double a0[3] = {0.024, y, -0.075}, a2[3] = {-0.04924, y, -0.008682}, a3[3] = {0.0, y, -0.317};
++            for(int k = 0; k < 3; ++k)
++            {
++              p.p0[c][k] = a0[k];
++              p.p2[c][k] = a2[k];
++              p.p3[c][k] = a3[k];
++            }
++          }
++        }
++        else
++        {
++          for(int c = 0; c < 2; ++c)
++          {
++            double y = (c == 0 ? 0.035 : -0.035) * ys;
++            double a0[3] = {0.0, y, -0.29}, a2[3] = {-0.05, y, -0.055}, a3[3] = {0.0, y, -0.05};
++            for(int k = 0; k < 3; ++k)
++            {
++              p.p0[c][k] = a0[k];
++              p.p2[c][k] = a2[k];
++              p.p3[c][k] = a3[k];
++            }
++          }
++        }
++        // Kt, KP[2], KP[3], KI[2] [Hz], PL[1]: RHPS1_drive_data, hip Drive07/08/12/13, ankle 09/10/14/15
++        double Kt = p.ankle ? 0.0487 : 0.246, KP2 = p.ankle ? 5e-6 : 1.1e-6;
++        double KP3 = p.ankle ? 60.0 : 30.0, KI = p.ankle ? 2.0 : 45.0, PL = p.ankle ? 6.79 : 2.55;
++        p.C = Kt * KP2 * counts_per_m * motor_rad_per_m * scale;
++        p.fmax = Kt * PL * motor_rad_per_m * scale;
++        p.kp = KP3;
++        p.wi = 2.0 * M_PI * KI;
++        // Hidden springs beyond the encoders (mjlab gate plant): ankle pitch / roll identified,
++        // hips stiff structure.
++        if(p.ankle)
++        {
++          p.ks[0] = env("MC_MUJOCO_RHPS1_K_ANKLE_P", 1400.0);
++          p.cs[0] = env("MC_MUJOCO_RHPS1_C_ANKLE_P", 3.0);
++          p.ks[1] = env("MC_MUJOCO_RHPS1_K_ANKLE_R", 900.0);
++          p.cs[1] = env("MC_MUJOCO_RHPS1_C_ANKLE_R", 0.3);
++        }
++        else
++        {
++          p.ks[0] = p.ks[1] = 5e4;
++          p.cs[0] = p.cs[1] = 260.0;
++        }
++        pairs.push_back(p);
++      }
++    }
++    for(std::string s : {"L", "R"})
++    {
++      Spring sp;
++      sp.idx = find(s + "_CROTCH_Y");
++      if(sp.idx < 0)
++      {
++        return false;
++      }
++      sp.k = env("MC_MUJOCO_RHPS1_K_CROTCH_Y", 2200.0);
++      sp.c = env("MC_MUJOCO_RHPS1_C_CROTCH_Y", 0.4);
++      sp.lag_hz = 5.75;
++      springs.push_back(sp);
++    }
++    return true;
++  }
++
++  // Lengths of both cylinders of a pair at joint angles (pitch, roll).
++  static void lengths(const Pair & p, double qp, double qr, double L[2])
++  {
++    const double BC = 0.07, BD = 0.06;
++    double cp = std::cos(qp), sp = std::sin(qp), cr = std::cos(qr), sr = std::sin(qr);
++    for(int c = 0; c < 2; ++c)
++    {
++      double v[3];
++      if(p.ankle)
++      {
++        // knee frame: P link at offR, rotated Rx(r) Ry(p)
++        double x = p.p2[c][0], y = p.p2[c][1], z = p.p2[c][2];
++        double x1 = cp * x + sp * z, z1 = -sp * x + cp * z;
++        double y2 = cr * y - sr * z1, z2 = sr * y + cr * z1;
++        v[0] = x1 + p.offR[0];
++        v[1] = y2 + p.offR[1];
++        v[2] = z2 + p.offR[2];
++      }
++      else
++      {
++        // P link frame: hip yaw origin seen from the P link, (Rx(r) Ry(p))^T (pos2 - offR)
++        double x = p.p2[c][0] - p.offR[0], y = p.p2[c][1] - p.offR[1], z = p.p2[c][2] - p.offR[2];
++        double y1 = cr * y + sr * z, z1 = -sr * y + cr * z;
++        double x2 = cp * x - sp * z1, z2 = sp * x + cp * z1;
++        v[0] = x2;
++        v[1] = y1;
++        v[2] = z2;
++      }
++      double X = v[0] - p.p3[c][0], Y = v[1] - p.p3[c][1], Z = v[2] - p.p3[c][2];
++      bool xz = std::fabs(X) > std::fabs(Z);
++      double den = xz ? X : Z;
++      double alp = (X * X + Z * Z + Y * Y - BC * BC + BD * BD) / (2 * den);
++      double bet = -(xz ? Z : X) / den;
++      double gam = bet * alp, de = alp * alp - BD * BD;
++      double s = std::sqrt(std::max(gam * gam - (bet * bet + 1) * de, 0.0));
++      double u0 = (-gam + s) / (bet * bet + 1), u1 = (-gam - s) / (bet * bet + 1);
++      double x0 = xz ? alp + bet * u0 : u0, z0 = xz ? u0 : alp + bet * u0;
++      double x1 = xz ? alp + bet * u1 : u1, z1 = xz ? u1 : alp + bet * u1;
++      double xs = x0 < 0 ? x0 : x1, zs = x0 < 0 ? z0 : z1;
++      double d0 = p.p0[c][0] - p.p3[c][0] - xs, d1 = p.p0[c][1] - p.p3[c][1], d2 = p.p0[c][2] - p.p3[c][2] - zs;
++      L[c] = std::sqrt(d0 * d0 + d1 * d1 + d2 * d2);
++    }
++  }
++
++  // q, qd: link joint state; q_ref, qd_ref: targets, indexed like mj_jnt_ids.
++  void step(const std::vector<double> & q,
++            const std::vector<double> & qd,
++            const std::vector<double> & q_ref,
++            const std::vector<double> & qd_ref,
++            double dt)
++  {
++    for(auto & p : pairs)
++    {
++      double qt[2] = {q_ref[p.idx[0]], q_ref[p.idx[1]]};
++      double ql[2] = {q[p.idx[0]], q[p.idx[1]]};
++      double qdl[2] = {qd[p.idx[0]], qd[p.idx[1]]};
++      if(fresh)
++      {
++        p.qm[0] = qt[0];
++        p.qm[1] = qt[1];
++        p.integral[0] = p.integral[1] = 0;
++      }
++      double Lc[2], Lm[2], J[2][2], Lp[2], Lmn[2];
++      lengths(p, qt[0], qt[1], Lc);
++      lengths(p, p.qm[0], p.qm[1], Lm);
++      const double h = 1e-6;
++      for(int k = 0; k < 2; ++k)
++      {
++        double a[2] = {p.qm[0], p.qm[1]}, b[2] = {p.qm[0], p.qm[1]};
++        a[k] += h;
++        b[k] -= h;
++        lengths(p, a[0], a[1], Lp);
++        lengths(p, b[0], b[1], Lmn);
++        for(int c = 0; c < 2; ++c)
++        {
++          J[c][k] = (Lp[c] - Lmn[c]) / (2 * h);
++        }
++      }
++      double a = p.kp * (1.0 + p.wi * dt), bb = (1.0 + p.wi * dt) * (1.0 + p.kp * dt);
++      double e0[2], D[2], f0[2], F[2], v[2];
++      for(int c = 0; c < 2; ++c)
++      {
++        e0[c] = Lc[c] - Lm[c];
++        D[c] = bb * p.C;
++        f0[c] = p.C * (a * e0[c] + p.wi * p.integral[c]);
++      }
++      auto solve = [&](const double Dd[2], const double ff[2]) {
++        double M[2][2], rhs[2];
++        for(int i = 0; i < 2; ++i)
++        {
++          for(int j = 0; j < 2; ++j)
++          {
++            M[i][j] = J[0][i] * Dd[0] * J[0][j] + J[1][i] * Dd[1] * J[1][j];
++          }
++          M[i][i] += p.ks[i] * dt + p.cs[i];
++          rhs[i] = J[0][i] * ff[0] + J[1][i] * ff[1] - p.ks[i] * (p.qm[i] - ql[i]) + p.cs[i] * qdl[i];
++        }
++        double det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
++        v[0] = (M[1][1] * rhs[0] - M[0][1] * rhs[1]) / det;
++        v[1] = (M[0][0] * rhs[1] - M[1][0] * rhs[0]) / det;
++        for(int c = 0; c < 2; ++c)
++        {
++          F[c] = ff[c] - Dd[c] * (J[c][0] * v[0] + J[c][1] * v[1]);
++        }
++      };
++      solve(D, f0);
++      bool sat[2] = {std::fabs(F[0]) > p.fmax, std::fabs(F[1]) > p.fmax};
++      if(sat[0] || sat[1])
++      {
++        double D2[2], f2[2];
++        for(int c = 0; c < 2; ++c)
++        {
++          D2[c] = sat[c] ? 0.0 : D[c];
++          f2[c] = sat[c] ? std::copysign(p.fmax, F[c]) : f0[c];
++        }
++        solve(D2, f2);
++      }
++      for(int c = 0; c < 2; ++c)
++      {
++        double Jv = J[c][0] * v[0] + J[c][1] * v[1];
++        double ev = p.kp * (e0[c] - dt * Jv) - Jv;
++        if(!(sat[c] && ev * F[c] > 0))
++        {
++          p.integral[c] += ev * dt;
++        }
++      }
++      for(int k = 0; k < 2; ++k)
++      {
++        p.qm[k] += dt * v[k];
++        p.v[k] = v[k];
++        p.tau[k] = p.ks[k] * (p.qm[k] - ql[k]) + p.cs[k] * (v[k] - qdl[k]);
++      }
++    }
++    for(auto & s : springs)
++    {
++      double qt = q_ref[s.idx], qdt = qd_ref[s.idx];
++      if(fresh)
++      {
++        s.qm = qt;
++        s.v = 0;
++      }
++      double a = 1.0 - std::exp(-2.0 * M_PI * s.lag_hz * dt);
++      double qm = s.qm + a * (qt - s.qm);
++      s.v = s.v + a * (qdt - s.v);
++      s.qm = qm;
++      s.tau = s.k * (s.qm - q[s.idx]) + s.c * (s.v - qd[s.idx]);
++    }
++    fresh = false;
++  }
++};
++
++} // namespace mc_mujoco
