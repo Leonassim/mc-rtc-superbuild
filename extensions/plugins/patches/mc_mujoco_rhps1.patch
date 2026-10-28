@@ -137,10 +137,10 @@ index 6e6d2d0..dbb3666 100644
     * has no motor actuation in MuJoCo */
 diff --git a/src/rhps1_drive.h b/src/rhps1_drive.h
 new file mode 100644
-index 0000000..3f58326
+index 0000000..a389e92
 --- /dev/null
 +++ b/src/rhps1_drive.h
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,375 @@
 +#pragma once
 +
 +// RHPS1 low-level drives, as in mjlab (rhps1_cylinders.CylinderDrive), enabled with
@@ -148,10 +148,13 @@ index 0000000..3f58326
 +// pair (target angles -> lengths with hrpsys' closed form, per motor P + series PI
 +// with its own integral and current limit, J^T F back), massless motors, the link on
 +// the motor side through a hidden spring. Hip yaw: hidden spring behind a lagged
-+// motor. Encoders report the motor side, as on the robot.
++// motor. MC_MUJOCO_RHPS1_DRIVE_ROT="CROTCH_Y,KNEE" (1 for both) puts those joints on
++// their own per-joint cascade (mjlab RHPS1_DRIVE_ROT). Encoders report the motor side, as on the robot.
++// MC_MUJOCO_RHPS1_{KP3,KI}_{ANKLE,CROTCH} override the cylinder drives' KP[3], KI[2].
 +
 +#include <mujoco/mujoco.h>
 +
++#include <algorithm>
 +#include <array>
 +#include <cmath>
 +#include <cstdlib>
@@ -178,6 +181,8 @@ index 0000000..3f58326
 +  {
 +    int idx;
 +    double k, c, lag_hz;
++    bool pi = false;
++    double C = 0, kp = 0, wi = 0, fmax = 0, integral = 0;
 +    double qm = 0, v = 0, tau = 0;
 +  };
 +  std::vector<Pair> pairs;
@@ -262,7 +267,9 @@ index 0000000..3f58326
 +        }
 +        // Kt, KP[2], KP[3], KI[2] [Hz], PL[1]: RHPS1_drive_data, hip Drive07/08/12/13, ankle 09/10/14/15
 +        double Kt = p.ankle ? 0.0487 : 0.246, KP2 = p.ankle ? 5e-6 : 1.1e-6;
-+        double KP3 = p.ankle ? 60.0 : 30.0, KI = p.ankle ? 2.0 : 45.0, PL = p.ankle ? 6.79 : 2.55;
++        double KP3 = p.ankle ? env("MC_MUJOCO_RHPS1_KP3_ANKLE", 60.0) : env("MC_MUJOCO_RHPS1_KP3_CROTCH", 30.0);
++        double KI = p.ankle ? env("MC_MUJOCO_RHPS1_KI_ANKLE", 2.0) : env("MC_MUJOCO_RHPS1_KI_CROTCH", 45.0);
++        double PL = p.ankle ? 6.79 : 2.55;
 +        p.C = Kt * KP2 * counts_per_m * motor_rad_per_m * scale;
 +        p.fmax = Kt * PL * motor_rad_per_m * scale;
 +        p.kp = KP3;
@@ -296,6 +303,43 @@ index 0000000..3f58326
 +      sp.c = env("MC_MUJOCO_RHPS1_C_CROTCH_Y", 0.4);
 +      sp.lag_hz = 5.75;
 +      springs.push_back(sp);
++    }
++    const char * rv = std::getenv("MC_MUJOCO_RHPS1_DRIVE_ROT");
++    std::string rot = rv ? rv : "";
++    bool rot_all = rot == "1";
++    // Joint-side c = Kt*KP[2]*counts*N^2, KP[3], KI[2] [Hz]: Drive02/04 (hip yaw), 03/05
++    // (knee); mjlab's effort limits.
++    if(rot_all || rot.find("CROTCH_Y") != std::string::npos)
++    {
++      for(auto & sp : springs)
++      {
++        sp.pi = true;
++        sp.C = 33.7 * scale;
++        sp.kp = 39.0;
++        sp.wi = 2.0 * M_PI * 45.0;
++        sp.fmax = 35.0;
++      }
++    }
++    if(rot_all || rot.find("KNEE") != std::string::npos)
++    {
++      for(std::string s : {"L", "R"})
++      {
++        Spring sp;
++        sp.idx = find(s + "_KNEE_P");
++        if(sp.idx < 0)
++        {
++          return false;
++        }
++        sp.k = 5e4;
++        sp.c = 260.0;
++        sp.lag_hz = 0;
++        sp.pi = true;
++        sp.C = 838.6 * scale;
++        sp.kp = 50.0;
++        sp.wi = 2.0 * M_PI * 0.02;
++        sp.fmax = 70.0;
++        springs.push_back(sp);
++      }
 +    }
 +    return true;
 +  }
@@ -440,6 +484,26 @@ index 0000000..3f58326
 +      {
 +        s.qm = qt;
 +        s.v = 0;
++        s.integral = 0;
++      }
++      if(s.pi)
++      {
++        // Massless motor, backward Euler in the motor position and the integral (mjlab _drive).
++        double ql = q[s.idx], qdl = qd[s.idx];
++        double kpi = s.C * s.kp * (1.0 + s.wi * dt), den = s.C + s.c + s.C * s.wi * dt;
++        double a = kpi * qt + s.C * s.wi * s.integral + s.k * ql + s.c * qdl;
++        double qm0 = s.qm;
++        s.qm = (qm0 + dt * a / den) / (1.0 + dt * (kpi + s.k) / den);
++        s.v = (s.qm - qm0) / dt;
++        double ev = s.kp * (qt - s.qm) - s.v;
++        s.tau = s.k * (s.qm - ql) + s.c * (s.v - qdl);
++        bool sat = std::fabs(s.tau) > s.fmax;
++        s.tau = std::max(-s.fmax, std::min(s.fmax, s.tau));
++        if(!(sat && ev * s.tau > 0))
++        {
++          s.integral += ev * dt;
++        }
++        continue;
 +      }
 +      double a = 1.0 - std::exp(-2.0 * M_PI * s.lag_hz * dt);
 +      double qm = s.qm + a * (qt - s.qm);
