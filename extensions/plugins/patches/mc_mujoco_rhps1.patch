@@ -137,10 +137,10 @@ index 6e6d2d0..dbb3666 100644
     * has no motor actuation in MuJoCo */
 diff --git a/src/rhps1_drive.h b/src/rhps1_drive.h
 new file mode 100644
-index 0000000..a389e92
+index 0000000..43e2feb
 --- /dev/null
 +++ b/src/rhps1_drive.h
-@@ -0,0 +1,375 @@
+@@ -0,0 +1,376 @@
 +#pragma once
 +
 +// RHPS1 low-level drives, as in mjlab (rhps1_cylinders.CylinderDrive), enabled with
@@ -266,9 +266,10 @@ index 0000000..a389e92
 +          }
 +        }
 +        // Kt, KP[2], KP[3], KI[2] [Hz], PL[1]: RHPS1_drive_data, hip Drive07/08/12/13, ankle 09/10/14/15
++        // (ankle KI[2] 0.02 Hz on the robot since 2026-10-29, 2.0 before)
 +        double Kt = p.ankle ? 0.0487 : 0.246, KP2 = p.ankle ? 5e-6 : 1.1e-6;
 +        double KP3 = p.ankle ? env("MC_MUJOCO_RHPS1_KP3_ANKLE", 60.0) : env("MC_MUJOCO_RHPS1_KP3_CROTCH", 30.0);
-+        double KI = p.ankle ? env("MC_MUJOCO_RHPS1_KI_ANKLE", 2.0) : env("MC_MUJOCO_RHPS1_KI_CROTCH", 45.0);
++        double KI = p.ankle ? env("MC_MUJOCO_RHPS1_KI_ANKLE", 0.02) : env("MC_MUJOCO_RHPS1_KI_CROTCH", 45.0);
 +        double PL = p.ankle ? 6.79 : 2.55;
 +        p.C = Kt * KP2 * counts_per_m * motor_rad_per_m * scale;
 +        p.fmax = Kt * PL * motor_rad_per_m * scale;
