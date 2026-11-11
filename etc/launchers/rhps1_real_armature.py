@@ -16,11 +16,13 @@ reads BEFORE the installed version (mj_sim.cpp, get_robot_cfg_path):
 meshdir is rewritten absolute, or the derived XML would not find the meshes from
 its new directory. Regenerated on every launch by the mc_mujoco shim.
 
-Values from the RHPS1_gains calibration document, armature = n_channels * JM *
-N^2, JM checked against the SANMOTION datasheet. The eight cylinder-driven
-joints (hip and ankle, roll and pitch) stay at 1.0: converting their
-cylinder-side effort into joint-side inertia needs attachment geometry that is
-in neither repository. Same split as on the training side.
+Values from the SANMOTION datasheets (RHPS1_gains/Doc): armature = n_channels *
+(JM + JS) * N^2, rotor plus encoder inertia, no brake on the robot's motors. The
+eight cylinder-driven joints (hip and ankle, roll and pitch) take their value at
+the neutral pose, (JM + JS) * k^2 * sum (dL/dq)^2 over the joint's two cylinders,
+k = 2 pi * 42598.4 counts/mm / 65536 counts/turn; it varies with the pose (hip
+pitch 0.26-0.43 over the walking range). Gear, pulley and screw inertias are not
+included: lower bounds.
 """
 
 import os
@@ -29,20 +31,26 @@ import re
 import sys
 
 ARMATURE = {
-  "L_CROTCH_Y": 0.06252, "R_CROTCH_Y": 0.06252,
-  "L_KNEE_P": 0.10672, "R_KNEE_P": 0.10672,
-  "CHEST_Y": 0.19251, "CHEST_P": 0.19251,
-  "HEAD_Y": 0.00331, "HEAD_P": 0.00331,
-  "L_SHOULDER_P": 0.15040, "R_SHOULDER_P": 0.15040,
-  "L_SHOULDER_R": 0.02556, "R_SHOULDER_R": 0.02556,
-  "L_SHOULDER_Y": 0.02556, "R_SHOULDER_Y": 0.02556,
-  "L_ELBOW_P": 0.02640, "R_ELBOW_P": 0.02640,
-  "L_ELBOW_Y": 0.02640, "R_ELBOW_Y": 0.02640,
-  "L_WRIST_R": 0.01485, "R_WRIST_R": 0.01485,
-  "L_WRIST_Y": 0.01485, "R_WRIST_Y": 0.01485,
+  "L_CROTCH_Y": 0.0731, "R_CROTCH_Y": 0.0731,
+  "L_KNEE_P": 0.2950, "R_KNEE_P": 0.2950,
+  "CHEST_Y": 0.2140, "CHEST_P": 0.2140,
+  "HEAD_Y": 0.0035, "HEAD_P": 0.0035,
+  "L_SHOULDER_P": 0.1672, "R_SHOULDER_P": 0.1672,
+  "L_SHOULDER_R": 0.0267, "R_SHOULDER_R": 0.0267,
+  "L_SHOULDER_Y": 0.0267, "R_SHOULDER_Y": 0.0267,
+  "L_ELBOW_P": 0.0281, "R_ELBOW_P": 0.0281,
+  "L_ELBOW_Y": 0.0281, "R_ELBOW_Y": 0.0281,
+  "L_WRIST_R": 0.0158, "R_WRIST_R": 0.0158,
+  "L_WRIST_Y": 0.0158, "R_WRIST_Y": 0.0158,
 }
-CYLINDER = {"L_CROTCH_P", "R_CROTCH_P", "L_CROTCH_R", "R_CROTCH_R",
-            "L_ANKLE_P", "R_ANKLE_P", "L_ANKLE_R", "R_ANKLE_R"}
+# Cylinder-driven joints, neutral pose.
+CYLINDER = {
+  "L_CROTCH_R": 0.2034, "R_CROTCH_R": 0.2034,
+  "L_CROTCH_P": 0.4152, "R_CROTCH_P": 0.4152,
+  "L_ANKLE_R": 0.0159, "R_ANKLE_R": 0.0159,
+  "L_ANKLE_P": 0.0477, "R_ANKLE_P": 0.0477,
+}
+ARMATURE.update(CYLINDER)
 
 # Effort limits [N.m], same table as the training actuators and the controller's
 # effort_limit block. Used only by RHPS1_FORCE_LIMITS.
@@ -145,7 +153,7 @@ def main() -> int:
     print(f"mc_mujoco: forcerange applique sur {len(EFFORT)} actionneurs", file=sys.stderr)
 
   # Une armature par articulation. Le `armature="1"` du bloc <default> reste et
-  # continue de servir a tout le reste : verins, mains, doigts.
+  # continue de servir a tout le reste : mains, doigts.
   missing = []
   applied = []
   for joint, value in ARMATURE.items():
@@ -162,14 +170,6 @@ def main() -> int:
   if missing:
     print(f"rhps1_real_armature: articulations non trouvees: {missing}", file=sys.stderr)
     return 1
-
-  # Verification: aucune articulation a verin ne doit avoir ete touchee.
-  for joint in CYLINDER:
-    m = re.search(rf'<joint name="{joint}"((?:(?!/>).)*?)/>', xml, re.S)
-    if m and "armature=" in m.group(1):
-      print(f"rhps1_real_armature: {joint} est a verin et a recu une armature",
-            file=sys.stderr)
-      return 1
 
   user.mkdir(parents=True, exist_ok=True)
   out_xml = user / "RHPS1main_real_armature.xml"
@@ -214,7 +214,7 @@ def main() -> int:
     "# Copy of the installed version, with only the main xmlModelPath\n"
     "# redirige vers le modele a armatures reelles.\n" + cfg)
   print(f"mc_mujoco: armatures reelles sur {len(applied)}/{len(ARMATURE)} "
-        f"articulations, {len(CYLINDER)} a verins laissees a 1.0")
+        f"articulations (dont {len(CYLINDER)} a verins, valeur au neutre)")
   return 0
 
 
