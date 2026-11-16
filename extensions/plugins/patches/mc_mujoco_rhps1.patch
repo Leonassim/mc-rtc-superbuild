@@ -1,8 +1,8 @@
 diff --git a/src/mj_sim.cpp b/src/mj_sim.cpp
-index d23ea97..79e406d 100644
+index d23ea97..1fd2bc4 100644
 --- a/src/mj_sim.cpp
 +++ b/src/mj_sim.cpp
-@@ -373,6 +373,15 @@ void MjRobot::initialize(mjModel * model, const mc_rbdyn::Robot & robot)
+@@ -373,6 +373,26 @@ void MjRobot::initialize(mjModel * model, const mc_rbdyn::Robot & robot)
      init_sensor_id("accelerometer sensor", "body sensor", bs.name(), "accelerometer", mjSENS_ACCELEROMETER,
                     mc_bs_to_mj_accelerometer_id);
    }
@@ -15,10 +15,21 @@ index d23ea97..79e406d 100644
 +      mc_rtc::log::info("[mc_mujoco] {}: RHPS1 drive model on hip/ankle cylinders and hip yaw", name);
 +    }
 +  }
++  // The real RHPS1 stands with its CoM ~1.8 cm behind the model's (sole sensors, 2026-11-01).
++  if(const char * cx = std::getenv("MC_MUJOCO_RHPS1_CHEST_COM_X"))
++  {
++    int b = mj_name2id(model, mjOBJ_BODY, prefixed("CHEST_P_LINK").c_str());
++    if(b >= 0)
++    {
++      model->body_ipos[3 * b] += std::atof(cx) - chest_com_x;
++      chest_com_x = std::atof(cx);
++      mc_rtc::log::info("[mc_mujoco] {}: CHEST_P_LINK CoM x shifted by {:+.3f} m", name, chest_com_x);
++    }
++  }
    reset(robot);
  }
  
-@@ -437,6 +446,10 @@ void MjRobot::reset(const mc_rbdyn::Robot & robot)
+@@ -437,6 +457,10 @@ void MjRobot::reset(const mc_rbdyn::Robot & robot)
      }
    }
    mj_ctrl = std::vector<double>(mj_prev_ctrl_q.size(), 0.0);
@@ -29,7 +40,7 @@ index d23ea97..79e406d 100644
    mj_next_ctrl_q = mj_prev_ctrl_q;
    mj_next_ctrl_alpha = mj_prev_ctrl_alpha;
    mj_next_ctrl_jointTorque = mj_prev_ctrl_jointTorque;
-@@ -698,6 +711,24 @@ void MjRobot::updateSensors(mc_control::MCGlobalController * gc, mjModel * model
+@@ -698,6 +722,24 @@ void MjRobot::updateSensors(mc_control::MCGlobalController * gc, mjModel * model
      encoders[mj_jnt_to_rjo[i]] = data->qpos[model->jnt_qposadr[mj_jnt_ids[i]]];
      alphas[mj_jnt_to_rjo[i]] = data->qvel[model->jnt_dofadr[mj_jnt_ids[i]]];
    }
@@ -54,7 +65,7 @@ index d23ea97..79e406d 100644
    for(size_t i = 0; i < mj_mot_ids.size(); ++i)
    {
      if(mj_jnt_to_rjo[i] == -1)
-@@ -800,6 +831,30 @@ void MjRobot::sendControl(const mjModel & model,
+@@ -800,6 +842,30 @@ void MjRobot::sendControl(const mjModel & model,
                            size_t frameskip_,
                            bool torque_control)
  {
@@ -85,7 +96,7 @@ index d23ea97..79e406d 100644
    for(size_t i = 0; i < mj_ctrl.size(); ++i)
    {
      auto mot_id = mj_mot_ids[i];
-@@ -825,6 +880,10 @@ void MjRobot::sendControl(const mjModel & model,
+@@ -825,6 +891,10 @@ void MjRobot::sendControl(const mjModel & model,
        {
          mj_ctrl[i] = torque_ref;
        }
@@ -96,7 +107,7 @@ index d23ea97..79e406d 100644
        else
        {
          mj_ctrl[i] = PD(rjo_id, q_ref, encoders[rjo_id], alpha_ref, alphas[rjo_id]);
-@@ -966,6 +1025,17 @@ bool MjSimImpl::stepSimulation()
+@@ -966,6 +1036,17 @@ bool MjSimImpl::stepSimulation()
  
  void MjSimImpl::updateScene()
  {
@@ -115,7 +126,7 @@ index d23ea97..79e406d 100644
    std::lock_guard<std::mutex> lock(rendering_mutex_);
    mjv_updateScene(model, data, &options, &pert, &camera, mjCAT_ALL, &scene);
 diff --git a/src/mj_sim_impl.h b/src/mj_sim_impl.h
-index 6e6d2d0..dbb3666 100644
+index 6e6d2d0..441688b 100644
 --- a/src/mj_sim_impl.h
 +++ b/src/mj_sim_impl.h
 @@ -1,6 +1,7 @@
@@ -126,12 +137,14 @@ index 6e6d2d0..dbb3666 100644
  
  #include "MujocoClient.h"
  
-@@ -104,6 +105,8 @@ struct MjRobot
+@@ -104,6 +105,10 @@ struct MjRobot
    std::vector<double> kp = {};
    /** Derivative gains for low-level PD control (used in PD loop) */
    std::vector<double> kd = {};
 +  /** RHPS1 drive model (MC_MUJOCO_RHPS1_DRIVE=1), replaces the PD on the joints it owns */
 +  std::shared_ptr<Rhps1Drive> rhps1_drive;
++  /** CHEST_P_LINK CoM x shift applied so far (MC_MUJOCO_RHPS1_CHEST_COM_X); initialize() runs twice */
++  double chest_com_x = 0.0;
  
    /** Names of the motors inside MuJoCo corresponding to the joints in \ref mj_jnt_names the name is empty if the joint
     * has no motor actuation in MuJoCo */
@@ -309,7 +322,7 @@ index 0000000..43e2feb
 +    std::string rot = rv ? rv : "";
 +    bool rot_all = rot == "1";
 +    // Joint-side c = Kt*KP[2]*counts*N^2, KP[3], KI[2] [Hz]: Drive02/04 (hip yaw), 03/05
-+    // (knee); mjlab's effort limits.
++    // (knee); mjlab's effort limits (knee 108, MC_MUJOCO_RHPS1_KNEE_FMAX=70 for the old cap).
 +    if(rot_all || rot.find("CROTCH_Y") != std::string::npos)
 +    {
 +      for(auto & sp : springs)
@@ -338,7 +351,7 @@ index 0000000..43e2feb
 +        sp.C = 838.6 * scale;
 +        sp.kp = 50.0;
 +        sp.wi = 2.0 * M_PI * 0.02;
-+        sp.fmax = 70.0;
++        sp.fmax = env("MC_MUJOCO_RHPS1_KNEE_FMAX", 108.0);  // mjlab trains the knee at 108
 +        springs.push_back(sp);
 +      }
 +    }
