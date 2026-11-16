@@ -30,6 +30,11 @@ LoadUserConfiguration: false
 # controller will not start at all if this drifts. mc_mujoco overrides it.
 Timestep: 0.005
 
+# Les logs hors de /tmp : il est vide au reboot, et la serie du 2026-09-10 --
+# dont les mesures d'impact du creneau 2 et la trace de la chute -- a ete perdue
+# comme ca. Ce repertoire survit.
+LogDirectory: /home/lmoussafir/logs/mc_rtc
+
 # Ecrire le log depuis un thread separe plutot que depuis run(). Sur le run du
 # perf_Log peaked at 81.5 ms and perf_GlobalRun at 82.3 ms for a 5 ms timestep;
 # the spikes came from disk writes. mc_rtc recommends this policy on such a

@@ -241,6 +241,26 @@ if(EMSCRIPTEN)
 else()
   set(MC_RTC_EXTRA_OPTIONS)
 endif()
+# The pin is 2.15.0. Until 2026-08-27 the source tree had drifted to
+# 4c4dae6a (2.15.2, bastien's origin/master at 2026-07-22 11:28 -- eleven
+# hours AFTER b73adc1 recorded these SHAs), and the whole install had been
+# built against it. Nothing forced a re-checkout while mc_rtc's build stamps
+# stayed valid, so the drift was invisible until a reconfigure invalidated
+# them and twelve modules started reporting "compiled with 2.15.2 but mc_rtc
+# is at 2.15.0", with mc_rtc_ticker segfaulting at teardown.
+#
+# That is a real ABI break, not a version-string mismatch: 4c4dae6a adds three
+# protected data members to mc_solver::QPSolver (openLoopRealFBlowPassFilterActive,
+# Lv, Lp), so sizeof(QPSolver) differs. Hence free(0x111) in Slot<std::string>.
+#
+# Rebuilding everything at this pin is safe for NewRLQPController: nothing we
+# build calls the 2.15.2-only API, and its whole path -- run_impl, runOpenLoop,
+# runCommon, updateRobot -- is byte-identical across the two commits. The 651
+# changed lines are all in runOpenLoopWithRealFloatingBase and its new helpers,
+# which FeedbackType::OpenLoop never reaches.
+#
+# 4c4dae6a is what the August experiments actually ran on. Kept here so that
+# state stays reproducible, NOT as a recommendation to advance to it.
 AddProject(mc_rtc
   GITHUB_PRIVATE bastien-muraccioli/mc_rtc
   GIT_TAG 542a88432d30d04dfd33cd6f0e0ab1c7be7f598b # pinned 2026-07-22, was origin/master
