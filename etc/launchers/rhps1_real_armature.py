@@ -134,9 +134,48 @@ def main() -> int:
   # the same command that mjlab caps becomes an unbounded torque here.
   #
   # Opt-in: this changes the plant, and index 0 currently walks without it.
+  #
+  # RHPS1_EFFORT_OVERRIDE="L_KNEE_P=45,R_KNEE_P=45" changes the ceiling of the
+  # named joints AND, on its own, clamps only those. That is the point: enabling
+  # RHPS1_FORCE_LIMITS bounds all 30 at once, which is three plant changes in one
+  # and tells you nothing about which joint mattered. Set both to clamp
+  # everything with some ceilings moved.
+  limits = dict(EFFORT)
+  override = os.environ.get("RHPS1_EFFORT_OVERRIDE")
+  overridden = []
+  if override:
+    for item in override.split(","):
+      item = item.strip()
+      if not item:
+        continue
+      if "=" not in item:
+        print(f"rhps1_real_armature: RHPS1_EFFORT_OVERRIDE: entree malformee "
+              f"{item!r}, attendu JOINT=VALEUR", file=sys.stderr)
+        return 1
+      joint, _, value = item.partition("=")
+      joint, value = joint.strip(), value.strip()
+      if joint not in EFFORT:
+        print(f"rhps1_real_armature: RHPS1_EFFORT_OVERRIDE: articulation inconnue "
+              f"{joint!r}", file=sys.stderr)
+        return 1
+      try:
+        limits[joint] = float(value)
+      except ValueError:
+        print(f"rhps1_real_armature: RHPS1_EFFORT_OVERRIDE: valeur non numerique "
+              f"{value!r} pour {joint}", file=sys.stderr)
+        return 1
+      overridden.append(joint)
+
   if os.environ.get("RHPS1_FORCE_LIMITS"):
+    clamped = limits                                    # les 30
+  elif overridden:
+    clamped = {j: limits[j] for j in overridden}        # seulement les nommees
+  else:
+    clamped = {}
+
+  if clamped:
     missing_act = []
-    for joint, limit in EFFORT.items():
+    for joint, limit in clamped.items():
       # Match on joint=, not on the motor name: the knees are L_KNEE_motor for
       # joint L_KNEE_P, so the name is not derivable from the joint.
       pattern = rf'(<motor\b[^>]*?\bjoint="{joint}")([^>]*?)(\s*/>)'
@@ -150,7 +189,9 @@ def main() -> int:
     if missing_act:
       print(f"rhps1_real_armature: actionneurs non trouves: {missing_act}", file=sys.stderr)
       return 1
-    print(f"mc_mujoco: forcerange applique sur {len(EFFORT)} actionneurs", file=sys.stderr)
+    detail = ", ".join(f"{j}={limits[j]:g}" for j in sorted(clamped))
+    print(f"mc_mujoco: forcerange applique sur {len(clamped)} actionneurs "
+          f"[{detail}]", file=sys.stderr)
 
   # Une armature par articulation. Le `armature="1"` du bloc <default> reste et
   # continue de servir a tout le reste : mains, doigts.
