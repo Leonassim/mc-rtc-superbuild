@@ -12,6 +12,6 @@ AddProject(rl_controller
   # Adding a policy index needs BOTH a yaml entry and a case in the
   # switch(currentPolicyIndex) that builds the observation. Missing the switch
   # case is silent until runtime, where it reads "Wrote 0 expects 246".
-  GIT_TAG e714eae # pinned 2026-11-06, slot 21 = soles' Fz as inputs (obs_format 9), no stepping at rest; slot 20 = slot 18 retrained on the ankle KI[2] 0.02 Hz plant; slots 18/19 = slot 17 refined against the robot defects; robot policy is index 3
+  GIT_TAG b79224a # pinned 2026-11-16, slot 22 = stairs (obs_format 11 height scan, rl48b), bench overrides RLQP_BENCH_POLICY_PATH / RLQP_BENCH_POLICY_STEP (50 Hz candidates); slot 21 = soles' Fz as inputs; slot 20 = slot 18 on the ankle KI[2] 0.02 Hz plant; robot policy is index 3
   DEPENDS mc_rtc mc_joystick_plugin
 )
