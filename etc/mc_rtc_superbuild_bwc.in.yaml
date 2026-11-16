@@ -1,0 +1,23 @@
+---
+# BaselineWalkingController overlay for the superbuild mc_rtc configuration.
+#
+# It overrides Enabled and NOTHING else. Everything the plant needs -- MainRobot,
+# Timestep, module paths, plugins, LoadUserConfiguration -- keeps coming from
+# mc_rtc_superbuild.yaml (and from mc_rtc_superbuild_mujoco.yaml in simulation),
+# so switching controller cannot silently switch robot or control rate too.
+#
+# Not applied by default: the base configuration is the real robot's, and there
+# Enabled: NewRLQPController is the only combination that has ever run on
+# hardware. Prepend this file to opt in -- MC_RTC_CONTROLLER_CONFIG is a
+# colon-separated list applied last-to-first (mc_global_controller_configuration.cpp:64),
+# so the first entry wins:
+#
+#   mc_mujoco_bwc                                    # simulation, does it for you
+#   MC_RTC_CONTROLLER_CONFIG=@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_bwc.yaml:$MC_RTC_CONTROLLER_CONFIG mc_rtc_ticker
+#
+# The RHPS1 tuning is not here. mc_rhps1 installs it to
+# lib/mc_controller/BaselineWalkingController/rhps1.yaml and mc_rtc merges it
+# per-robot (MCController.cpp:1099) off the robot module's name, "rhps1" for
+# every RHPS1 variant. refComZ 0.96, footstepDuration 0.9 s, foot half-spacing
+# 0.11 m, PreviewControlZmp -- edit that file, not this one.
+Enabled: BaselineWalkingController

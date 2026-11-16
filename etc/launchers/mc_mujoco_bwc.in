@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# mc_mujoco running BaselineWalkingController instead of NewRLQPController.
+#
+# Prepends the BWC overlay, then execs the regular mc_mujoco shim rather than the
+# binary, so the simulation overlay and the real-armature generation still apply
+# and cannot drift from what plain `mc_mujoco` does. Final merge order, first
+# entry winning:
+#
+#   mc_rtc_superbuild_mujoco.yaml  (added by the mc_mujoco shim: MainRobot, Timestep)
+#   mc_rtc_superbuild_bwc.yaml     (this file: Enabled)
+#   mc_rtc_superbuild.yaml         (the base)
+#
+# The two overlays touch disjoint keys, so the order between them does not
+# matter -- only that both come before the base.
+set -eu
+
+OVERLAY="@CMAKE_INSTALL_PREFIX@/etc/mc_rtc_superbuild_bwc.yaml"
+SHIM="@CMAKE_INSTALL_PREFIX@/libexec/launchers/mc_mujoco"
+
+[ -f "$OVERLAY" ] || { echo "mc_mujoco_bwc: missing overlay: $OVERLAY" >&2; exit 1; }
+[ -x "$SHIM" ]    || { echo "mc_mujoco_bwc: missing shim: $SHIM" >&2; exit 1; }
+
+export MC_RTC_CONTROLLER_CONFIG="${OVERLAY}${MC_RTC_CONTROLLER_CONFIG:+:${MC_RTC_CONTROLLER_CONFIG}}"
+
+echo "mc_mujoco_bwc: BaselineWalkingController" >&2
+exec "$SHIM" "$@"

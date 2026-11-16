@@ -280,8 +280,12 @@ configure_file(etc/mc_rtc_superbuild.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbui
 # hand-written file means the simulation and real-robot configurations cannot
 # drift: it overrides MainRobot and nothing else.
 configure_file(etc/mc_rtc_superbuild_mujoco.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_mujoco.yaml @ONLY)
+# BaselineWalkingController variant, not loaded by default either. Overrides
+# Enabled and nothing else, so it composes with the mujoco overlay above.
+configure_file(etc/mc_rtc_superbuild_bwc.in.yaml ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_bwc.yaml @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
               ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_mujoco.yaml
+              ${CMAKE_BINARY_DIR}/mc_rtc_superbuild_bwc.yaml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
 
 # Launcher shims. Installed ahead of bin/ on PATH by setup_mc_rtc.sh, so plain
@@ -289,7 +293,10 @@ install(FILES ${CMAKE_BINARY_DIR}/mc_rtc_superbuild.yaml
 # out on every invocation. mc_rtc_ticker has no shim on purpose: the base
 # configuration is what it wants. See etc/launchers/mc_mujoco.in.
 configure_file(etc/launchers/mc_mujoco.in ${CMAKE_BINARY_DIR}/launchers/mc_mujoco @ONLY)
+# mc_mujoco_bwc execs the shim above, it does not duplicate it.
+configure_file(etc/launchers/mc_mujoco_bwc.in ${CMAKE_BINARY_DIR}/launchers/mc_mujoco_bwc @ONLY)
 install(PROGRAMS ${CMAKE_BINARY_DIR}/launchers/mc_mujoco
+                 ${CMAKE_BINARY_DIR}/launchers/mc_mujoco_bwc
                  ${CMAKE_CURRENT_SOURCE_DIR}/etc/launchers/rhps1_real_armature.py
         DESTINATION ${CMAKE_INSTALL_PREFIX}/libexec/launchers)
 
